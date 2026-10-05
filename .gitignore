@@ -3,7 +3,7 @@ dist/
 *.log
 .env
 .env.local
-uploads/
+server/uploads/*
 !server/uploads/.gitkeep
 coverage/
 .DS_Store
@@ -11,3 +11,5 @@ web/dev-dist/
 print-agent/.cache/
 *.tsbuildinfo
 .seed-output.json
+e2e-shots/
+fake-printer-out/

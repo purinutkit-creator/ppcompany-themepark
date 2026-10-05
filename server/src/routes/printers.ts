@@ -210,6 +210,8 @@ export default async function printerRoutes(app: FastifyInstance) {
 
   // ---------------------------------------------------------------- executor API (agent / kiosk / browser device)
   app.get('/executor/printers', { preHandler: requireDeviceOrStaff }, async (req) => executorPrinters(req));
+  /** Font library so executors can render receipts with the configured (uploaded / Google) fonts. */
+  app.get('/executor/fonts', { preHandler: requireDeviceOrStaff }, async () => query(`SELECT family, source, file_url, format, weights FROM fonts`));
   app.get('/executor/jobs', { preHandler: requireDeviceOrStaff }, async (req) => {
     const printers = await executorPrinters(req);
     return pendingJobsFor(printers.map((p) => p.id));

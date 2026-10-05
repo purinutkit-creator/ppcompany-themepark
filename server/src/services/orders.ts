@@ -272,7 +272,7 @@ export async function createOrder(
 
 export async function getOrderDetail(orderId: string, db?: Db) {
   const order = await one<any>(
-    `SELECT o.*, k.code AS kiosk_code, k.name AS kiosk_name, b.name AS branch_name, b.code AS branch_code,
+    `SELECT o.*, k.code AS kiosk_code, k.name AS kiosk_name, b.name AS branch_name, b.code AS branch_code, b.timezone AS branch_timezone,
             q.status AS queue_status, q.call_count, u.name AS created_by_name
        FROM orders o JOIN branches b ON b.id=o.branch_id LEFT JOIN kiosks k ON k.id=o.kiosk_id
        LEFT JOIN queue_numbers q ON q.order_id=o.id LEFT JOIN users u ON u.id=o.created_by
@@ -345,6 +345,7 @@ export async function buildPrintOrder(orderId: string, db: Db, onlyStationId?: s
     paidAt: o.paid_at ? new Date(o.paid_at).toISOString() : null,
     kioskCode: o.kiosk_code ?? (o.source === 'CASHIER' ? 'POS' : null),
     branchName: (o.branch_name as I18nText)?.[o.language as Lang] || (o.branch_name as I18nText)?.en || o.branch_code,
+    timeZone: o.branch_timezone,
     language: o.language,
     items: items.map((i: any) => ({
       name: i.name,

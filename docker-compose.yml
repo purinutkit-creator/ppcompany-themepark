@@ -1,0 +1,59 @@
+# One-command stack: PostgreSQL + API/realtime server (also serves the PWA).
+#   cp .env.example .env   # set secrets
+#   docker compose up -d --build
+#   docker compose exec app node dist/seed.js        # first run: base data + demo menu
+# Optional on-site print agent (LAN / USB printers):
+#   AGENT_TOKEN=... docker compose --profile agent up -d print-agent
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kiosk
+      POSTGRES_USER: kiosk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kiosk-change-me}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kiosk -d kiosk"]
+      interval: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://kiosk:${POSTGRES_PASSWORD:-kiosk-change-me}@db:5432/kiosk
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:4000}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32+ chars) in .env}
+      PAYMENT_WEBHOOK_SECRET_SANDBOX: ${PAYMENT_WEBHOOK_SECRET_SANDBOX:-sandbox-webhook-secret}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin1234}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    ports:
+      - "${APP_PORT:-4000}:4000"
+    volumes:
+      - uploads:/data/uploads
+
+  print-agent:
+    profiles: ["agent"]
+    build:
+      context: .
+      dockerfile: print-agent/Dockerfile
+    restart: unless-stopped
+    network_mode: host # reach LAN printers on :9100 and allow subnet scanning
+    environment:
+      SERVER_URL: ${AGENT_SERVER_URL:-http://localhost:4000}
+      AGENT_TOKEN: ${AGENT_TOKEN:-}
+    volumes:
+      - agentcache:/data
+    # USB / serial printers: uncomment and adjust
+    # devices:
+    #   - /dev/usb/lp0:/dev/usb/lp0
+
+volumes:
+  pgdata:
+  uploads:
+  agentcache:

@@ -19,7 +19,9 @@
     "db:migrate": "npm run db:migrate --workspace server",
     "db:seed": "npm run db:seed --workspace server",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "e2e": "node scripts/e2e-flow.mjs e2e-shots",
+    "fake-printer": "node scripts/fake-printer.mjs fake-printer-out 9101"
   },
   "engines": {
     "node": ">=20"

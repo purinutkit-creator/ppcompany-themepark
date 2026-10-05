@@ -246,6 +246,8 @@ export interface PrintOrder {
   paidAt?: string | null;
   kioskCode?: string | null;
   branchName?: string | null;
+  /** IANA zone of the branch, so receipts show local time regardless of the printing machine. */
+  timeZone?: string | null;
   language: Lang;
   items: PrintOrderItem[];
   subtotal: number;

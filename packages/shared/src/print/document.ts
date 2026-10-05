@@ -52,11 +52,20 @@ const lbl = (k: string, lang: Lang) => tr(L[k], lang, k);
 const money = (n: number, sym: string) =>
   `${sym}${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function formatPrintTime(iso: string | null | undefined): string {
+export function formatPrintTime(iso: string | null | undefined, timeZone?: string | null): string {
   if (!iso) return '';
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: timeZone || undefined,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(iso));
+  const g = (t: string) => parts.find((x) => x.type === t)?.value ?? '';
+  return `${g('day')}/${g('month')}/${g('year')} ${g('hour')}:${g('minute')}:${g('second')}`;
 }
 
 export function buildReceiptDoc(p: PrintJobPayload): PrintDoc {
@@ -76,7 +85,7 @@ export function buildReceiptDoc(p: PrintJobPayload): PrintDoc {
   b.push({ t: 'text', text: lbl('queue', lang), align: 'center' });
   b.push({ t: 'text', text: `#${o.orderNumber}`, align: 'center', size: 3, bold: true });
   b.push({ t: 'text', text: lbl(o.orderType, lang), align: 'center', size: 2, bold: true, invert: true });
-  b.push({ t: 'cols', left: lbl('time', lang), right: formatPrintTime(o.paidAt || o.createdAt) });
+  b.push({ t: 'cols', left: lbl('time', lang), right: formatPrintTime(o.paidAt || o.createdAt, o.timeZone) });
   if (o.kioskCode) b.push({ t: 'cols', left: lbl('kiosk', lang), right: o.kioskCode });
   b.push({ t: 'rule' });
   for (const it of o.items) {
@@ -125,7 +134,7 @@ export function buildKitchenDoc(p: PrintJobPayload): PrintDoc {
   if (p.stationName) b.push({ t: 'text', text: tr(p.stationName, lang), align: 'center', size: 2, bold: true, invert: true });
   b.push({ t: 'text', text: `${lbl('order', 'en')} #${o.orderNumber}`, align: 'center', size: 3, bold: true });
   b.push({ t: 'text', text: lbl(o.orderType, lang), align: 'center', size: 2, bold: true });
-  b.push({ t: 'cols', left: lbl('time', lang), right: formatPrintTime(o.paidAt || o.createdAt) });
+  b.push({ t: 'cols', left: lbl('time', lang), right: formatPrintTime(o.paidAt || o.createdAt, o.timeZone) });
   if (o.kioskCode) b.push({ t: 'cols', left: lbl('kiosk', lang), right: o.kioskCode });
   const count = o.items.reduce((s, i) => s + i.qty, 0);
   b.push({ t: 'cols', left: lbl('items', lang), right: String(count) });

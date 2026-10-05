@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.env
+**/uploads
+web/dev-dist
+.git
+**/.cache
+server/.seed-output.json
