@@ -85,7 +85,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   // Production: serve the built PWA with SPA fallback.
   const webDist = path.resolve(config.webDist);
   if (fs.existsSync(path.join(webDist, 'index.html'))) {
-    await app.register(fastifyStatic, { root: webDist, prefix: '/', wildcard: false, decorateReply: true });
+    await app.register(fastifyStatic, { root: webDist, prefix: '/', wildcard: true, decorateReply: true });
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/') || req.url.startsWith('/uploads/') || req.url.startsWith('/socket.io')) {
         return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

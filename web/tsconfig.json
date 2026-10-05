@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client", "w3c-web-usb", "web-bluetooth", "vite-plugin-pwa/client"],
+    "noUnusedLocals": false
+  },
+  "include": ["src"]
+}

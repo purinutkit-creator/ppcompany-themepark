@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* Brand tokens — overridden at runtime from Admin → Theme settings (see lib/theme.ts). */
+:root {
+  --brand-primary: #E4572E;
+  --brand-secondary: #2D3142;
+  --brand-accent: #FFC145;
+  --brand-bg: #FFF8F0;
+  --brand-surface: #FFFFFF;
+  --brand-button: #E4572E;
+  --brand-button-text: #FFFFFF;
+  --brand-text: #1F2333;
+  --brand-radius: 20px;
+  --font-app: 'Prompt', 'Noto Sans SC', system-ui, sans-serif;
+  --font-size-app: 16px;
+  --font-weight-app: 400;
+  --letter-spacing-app: 0px;
+  --line-height-app: 1.45;
+}
+
+@theme inline {
+  --color-primary: var(--brand-primary);
+  --color-secondary: var(--brand-secondary);
+  --color-accent: var(--brand-accent);
+  --color-bg: var(--brand-bg);
+  --color-surface: var(--brand-surface);
+  --color-btn: var(--brand-button);
+  --color-btn-text: var(--brand-button-text);
+  --color-ink: var(--brand-text);
+  --radius-brand: var(--brand-radius);
+  --font-app: var(--font-app);
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-app);
+  font-size: var(--font-size-app);
+  font-weight: var(--font-weight-app);
+  letter-spacing: var(--letter-spacing-app);
+  line-height: var(--line-height-app);
+  color: var(--brand-text);
+  background: #f4f5f7;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:lang(zh) { font-family: 'Noto Sans SC', var(--font-app); }
+
+/* Kiosk: touch-first, no text selection, no overscroll bounce */
+.kiosk-root { user-select: none; -webkit-user-select: none; overscroll-behavior: none; touch-action: manipulation; background: var(--brand-bg); }
+.kiosk-root input, .kiosk-root textarea { user-select: text; -webkit-user-select: text; }
+.press { transition: transform .08s ease, box-shadow .15s ease, background-color .15s ease; }
+.press:active { transform: scale(.97); }
+
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); border-radius: 8px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+@keyframes pop-in { from { opacity: 0; transform: scale(.94) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-primary) 55%, transparent); } 100% { box-shadow: 0 0 0 28px transparent; } }
+@keyframes ready-flash { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes shimmer { from { background-position: -400px 0; } to { background-position: 400px 0; } }
+@keyframes check-draw { from { stroke-dashoffset: 60; } to { stroke-dashoffset: 0; } }
+.anim-pop { animation: pop-in .28s cubic-bezier(.2,.9,.3,1.2) both; }
+.anim-up { animation: slide-up .35s cubic-bezier(.2,.8,.2,1) both; }
+.anim-fade { animation: fade-in .25s ease both; }
+.anim-pulse-ring { animation: pulse-ring 1.6s ease-out infinite; }
+.anim-ready { animation: ready-flash 1.2s ease-in-out 3; }
+.anim-float { animation: float 4s ease-in-out infinite; }
+.skeleton { background: linear-gradient(90deg, #eee 0%, #f6f6f6 50%, #eee 100%); background-size: 800px 100%; animation: shimmer 1.2s linear infinite; }
+.check-path { stroke-dasharray: 60; animation: check-draw .6s .15s ease forwards; stroke-dashoffset: 60; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}
