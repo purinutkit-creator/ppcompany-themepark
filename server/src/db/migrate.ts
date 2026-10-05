@@ -21,6 +21,7 @@ export async function migrate(log = console.log): Promise<void> {
     const done = new Set((await client.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name));
     const dir = migrationsDir();
     const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+    if (!files.length) throw new Error(`no .sql migrations found in ${dir}`);
     for (const f of files) {
       if (done.has(f)) continue;
       const sql = fs.readFileSync(path.join(dir, f), 'utf8');
@@ -39,14 +40,4 @@ export async function migrate(log = console.log): Promise<void> {
     await client.query('SELECT pg_advisory_unlock(727274)').catch(() => {});
     client.release();
   }
-}
-
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
-if (isMain) {
-  migrate()
-    .then(() => pool.end())
-    .catch((e) => {
-      console.error(e);
-      process.exit(1);
-    });
 }

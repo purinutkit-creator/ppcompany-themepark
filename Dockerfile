@@ -26,8 +26,8 @@ RUN npm ci --omit=dev -w server --include-workspace-root=false --no-audit --no-f
 COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/web/dist ./web/dist
 COPY packages/shared ./packages/shared
-RUN mkdir -p /data/uploads && chown -R node:node /data
-USER node
+# Runs as root so a platform-mounted persistent disk at /data (e.g. Render disks) is writable.
+RUN mkdir -p /data/uploads
 WORKDIR /app/server
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

@@ -39,6 +39,20 @@ export async function seedBase() {
   );
 }
 
+/** Empty production install: one branch, its default kitchen station and an owner account. */
+export async function seedMinimal(adminPassword: string) {
+  await tx(async (c) => {
+    const b = await one<any>(`INSERT INTO branches (code, name) VALUES ('MAIN', $1) RETURNING id`, [t('สาขาหลัก', 'Main Branch', '总店')], c);
+    await one(`INSERT INTO kitchen_stations (branch_id, code, name, is_default) VALUES ($1,'MAIN',$2,true)`, [b.id, t('ครัวหลัก', 'Main Kitchen', '主厨房')], c);
+    const owner = await one<any>(`SELECT id FROM roles WHERE code='OWNER'`, [], c);
+    await one(
+      `INSERT INTO users (name, employee_code, username, password_hash, role_id) VALUES ('Owner', 'OWN001', 'admin', $1, $2)`,
+      [await hashSecret(adminPassword), owner.id],
+      c,
+    );
+  });
+}
+
 export async function seedDemo(opts: { adminPassword: string }) {
   const output: Record<string, unknown> = {};
   await tx(async (c) => {
@@ -245,7 +259,7 @@ export async function seedDemo(opts: { adminPassword: string }) {
   return output;
 }
 
-async function main() {
+export async function main() {
   const reset = process.argv.includes('--reset');
   await migrate((m) => console.log(m));
   if (reset) {
@@ -262,7 +276,8 @@ async function main() {
     return;
   }
   if (process.env.SEED_DEMO === 'false') {
-    console.log('Base data seeded (demo disabled). Create the first branch/admin via SQL or enable demo.');
+    await seedMinimal(process.env.SEED_ADMIN_PASSWORD || 'admin1234');
+    console.log('Production bootstrap created: branch MAIN, kitchen station, owner login "admin" (password = SEED_ADMIN_PASSWORD).');
     return;
   }
   const out = await seedDemo({ adminPassword: process.env.SEED_ADMIN_PASSWORD || 'admin1234' });
@@ -271,15 +286,6 @@ async function main() {
   fs.writeFileSync(file, JSON.stringify(out, null, 2));
   console.log('\nDemo data created. Device tokens (shown once, also written to', file, '):');
   console.log(JSON.stringify(out, null, 2));
-  console.log('\nLogins: admin / admin1234 (or PIN OWN001/1234), manager MGR001/2222, cashier CSH001/1111, kitchen KIT001/3333');
-}
-
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
-if (isMain) {
-  main()
-    .then(() => pool.end())
-    .catch((e) => {
-      console.error(e);
-      process.exit(1);
-    });
+  const adminPw = process.env.SEED_ADMIN_PASSWORD ? '<SEED_ADMIN_PASSWORD>' : 'admin1234';
+  console.log(`\nLogins: admin / ${adminPw} (or PIN OWN001/1234), manager MGR001/2222, cashier CSH001/1111, kitchen KIT001/3333 — change these after first login`);
 }

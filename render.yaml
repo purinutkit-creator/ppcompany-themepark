@@ -1,0 +1,47 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Dashboard → New → Blueprint → select this repo (or use the "Deploy to Render" button in README.md).
+# Creates: PostgreSQL + one Docker web service that serves the API, Socket.IO realtime and the PWA.
+databases:
+  - name: kiosk-db
+    region: singapore
+    plan: basic-256mb
+    databaseName: kiosk
+    user: kiosk
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: krua-hub-kiosk
+    runtime: docker
+    region: singapore
+    plan: starter # always-on: kiosks, cashier and KDS keep their realtime connection
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    # Runs migrations + base data before each deploy. Demo menu/staff/devices are only
+    # created when the database is empty (set SEED_DEMO=false for an empty production menu).
+    preDeployCommand: node dist/seed.js
+    disk:
+      name: uploads
+      mountPath: /data # product images, slips, logos, fonts (UPLOAD_DIR=/data/uploads)
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kiosk-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PAYMENT_WEBHOOK_SECRET_SANDBOX
+        generateValue: true
+      - key: SEED_ADMIN_PASSWORD # password for the "admin" login — read it in the dashboard
+        generateValue: true
+      - key: SEED_DEMO
+        value: "true"
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info

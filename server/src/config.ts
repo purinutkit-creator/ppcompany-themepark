@@ -11,7 +11,8 @@ export const config = {
   port: Number(env('PORT', '4000')),
   host: env('HOST', '0.0.0.0'),
   databaseUrl: env('DATABASE_URL', 'postgres://postgres:postgres@localhost:5432/kiosk'),
-  publicUrl: env('PUBLIC_URL', 'http://localhost:4000').replace(/\/$/, ''),
+  // On Render, RENDER_EXTERNAL_URL is provided automatically (used for receipt QR lookup links).
+  publicUrl: env('PUBLIC_URL', process.env.RENDER_EXTERNAL_URL || 'http://localhost:4000').replace(/\/$/, ''),
   corsOrigins: env('CORS_ORIGINS', '')
     .split(',')
     .map((s) => s.trim())
