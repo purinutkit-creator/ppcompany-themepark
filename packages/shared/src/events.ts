@@ -1,0 +1,42 @@
+// Real-time event names. All devices subscribe to rooms and refresh state on these events.
+export const EVENTS = {
+  ORDER_CREATED: 'ORDER_CREATED',
+  ORDER_UPDATED: 'ORDER_UPDATED',
+  PAYMENT_WAITING: 'PAYMENT_WAITING',
+  PAYMENT_APPROVED: 'PAYMENT_APPROVED',
+  PAYMENT_REJECTED: 'PAYMENT_REJECTED',
+  PAYMENT_STATUS: 'PAYMENT_STATUS',
+  ORDER_CONFIRMED: 'ORDER_CONFIRMED',
+  KITCHEN_NEW: 'KITCHEN_NEW',
+  KITCHEN_PREPARING: 'KITCHEN_PREPARING',
+  KITCHEN_UPDATED: 'KITCHEN_UPDATED',
+  ORDER_READY: 'ORDER_READY',
+  ORDER_COMPLETED: 'ORDER_COMPLETED',
+  ORDER_CANCELLED: 'ORDER_CANCELLED',
+  QUEUE_UPDATED: 'QUEUE_UPDATED',
+  QUEUE_CALL: 'QUEUE_CALL',
+  STOCK_UPDATED: 'STOCK_UPDATED',
+  MENU_UPDATED: 'MENU_UPDATED',
+  SETTINGS_UPDATED: 'SETTINGS_UPDATED',
+  PRINT_JOB_CREATED: 'PRINT_JOB_CREATED',
+  PRINT_JOB_UPDATED: 'PRINT_JOB_UPDATED',
+  PRINTER_STATUS: 'PRINTER_STATUS',
+  PRINTER_ERROR: 'PRINTER_ERROR',
+  KIOSK_STATUS: 'KIOSK_STATUS',
+  STAFF_CALL: 'STAFF_CALL',
+  AGENT_COMMAND: 'AGENT_COMMAND',
+} as const;
+export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
+
+export const rooms = {
+  branchCashier: (branchId: string) => `branch:${branchId}:cashier`,
+  branchKitchen: (branchId: string) => `branch:${branchId}:kitchen`,
+  branchQueue: (branchId: string) => `branch:${branchId}:queue`,
+  branchAdmin: (branchId: string) => `branch:${branchId}:admin`,
+  branchKiosks: (branchId: string) => `branch:${branchId}:kiosks`,
+  branchPrinters: (branchId: string) => `branch:${branchId}:printers`,
+  kiosk: (kioskId: string) => `kiosk:${kioskId}`,
+  agent: (agentId: string) => `agent:${agentId}`,
+  device: (deviceId: string) => `device:${deviceId}`,
+  global: 'global',
+};
