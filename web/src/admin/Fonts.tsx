@@ -1,17 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, Upload } from 'lucide-react';
 import { staffApi, errorMessage } from '../lib/api';
+import { fontForLang } from '@kiosk/shared';
 import { loadFont } from '../lib/theme';
+import { useT } from '../lib/lang';
 import { Badge, Button, Card, Field, Input, Loading, Modal, NumberInput, PageHeader, Select, Table, Td, confirmDialog, toast } from '../components/ui';
 import { useList, useSaveSetting, useSettings } from './hooks';
 import { PrintPreview } from './PrintPreview';
 import { sampleJob } from './samples';
 
-const SURFACES: [string, string][] = [['kiosk', 'Kiosk'], ['admin', 'Admin'], ['cashier', 'Cashier'], ['kds', 'KDS'], ['queue', 'Queue Display'], ['receipt', 'Receipt'], ['kitchenTicket', 'Kitchen Ticket']];
+const SURFACES: [string, { th: string; en: string; zh: string }][] = [
+  ['web', { th: 'เว็บไซต์ / สมาชิก', en: 'Website / member portal', zh: '官网 / 会员中心' }],
+  ['kiosk', { th: 'ตู้คีออส', en: 'Kiosk', zh: '自助机' }],
+  ['admin', { th: 'หลังบ้าน', en: 'Admin', zh: '后台' }],
+  ['counter', { th: 'เคาน์เตอร์ขายบัตร', en: 'Box office', zh: '售票处' }],
+  ['pos', { th: 'POS', en: 'POS', zh: 'POS' }],
+  ['cashier', { th: 'แคชเชียร์', en: 'Cashier', zh: '收银' }],
+  ['gate', { th: 'จอประตู / ควบคุมประตู', en: 'Gate display & console', zh: '闸门显示/操作台' }],
+  ['ride', { th: 'เครื่องเล่น', en: 'Ride screens', zh: '游乐设施屏' }],
+  ['kds', { th: 'จอครัว', en: 'KDS', zh: '厨房显示' }],
+  ['queue', { th: 'จอเรียกคิว', en: 'Queue display', zh: '叫号屏' }],
+  ['receipt', { th: 'ใบเสร็จ', en: 'Receipt', zh: '收据' }],
+  ['ticket', { th: 'ตั๋ว', en: 'Ticket', zh: '门票' }],
+  ['wristband', { th: 'ริสแบนด์', en: 'Wristband', zh: '腕带' }],
+  ['kitchenTicket', { th: 'ใบสั่งครัว', en: 'Kitchen ticket', zh: '厨房单' }],
+];
+const LANGS = [['th', 'ไทย'], ['en', 'English'], ['zh', '中文']] as const;
 const SUGGESTED = ['Prompt', 'Kanit', 'Sarabun', 'IBM Plex Sans Thai', 'Noto Sans Thai', 'Noto Sans SC', 'Mitr', 'Bai Jamjuree', 'Chakra Petch', 'Athiti', 'Inter', 'Roboto', 'Poppins', 'Noto Serif Thai', 'ZCOOL XiaoWei'];
 const SAMPLE = 'สวัสดีครับ ยินดีต้อนรับ · Welcome · 欢迎光临 #48271 ฿459.00';
 
 export default function Fonts() {
+  const t = useT();
   const fonts = useList('fonts', '/settings/fonts');
   const s = useSettings();
   const save = useSaveSetting();
@@ -22,28 +41,45 @@ export default function Fonts() {
   useEffect(() => setCfg(s.data?.settings.fonts), [s.data]);
   useEffect(() => {
     if (!cfg || !fonts.data) return;
-    for (const v of Object.values(cfg) as any[]) loadFont(v.family, fonts.data as any);
+    for (const v of Object.values(cfg) as any[]) {
+      loadFont(v.family, fonts.data as any);
+      for (const f of Object.values(v.byLang ?? {}) as string[]) if (f) loadFont(f, fonts.data as any);
+    }
   }, [cfg, fonts.data]);
   if (!cfg || fonts.isLoading) return <Loading />;
-  const set = (surface: string, k: string, v: any) => setCfg({ ...cfg, [surface]: { ...cfg[surface], [k]: v } });
-  const families = [...new Set([...(fonts.data ?? []).map((f: any) => f.family), ...Object.values(cfg).map((x: any) => x.family)])];
+  const set = (surface: string, k: string, v: any) => setCfg({ ...cfg, [surface]: { ...(cfg[surface] ?? { family: 'Prompt', weight: 400, size: 16, letterSpacing: 0, lineHeight: 1.4 }), [k]: v } });
+  const setLang = (surface: string, lang: string, fam: string) => set(surface, 'byLang', { ...(cfg[surface]?.byLang ?? {}), [lang]: fam || undefined });
+  const famOf = (k: string, lang: string) => cfg[k]?.byLang?.[lang] || cfg[k]?.family;
+  const families = [...new Set([...(fonts.data ?? []).map((f: any) => f.family), ...Object.values(cfg).flatMap((x: any) => [x.family, ...Object.values(x.byLang ?? {})]).filter(Boolean)])] as string[];
 
   return (
     <div>
-      <PageHeader title="Fonts" sub="Google Fonts or uploaded .ttf .otf .woff .woff2 — set per surface, preview, then Apply to System" actions={<Button onClick={() => save.mutate({ key: 'fonts', value: cfg })} loading={save.isPending}>Apply to System</Button>} />
-      <Card title="Font per surface" padded={false}>
-        <Table head={['Surface', 'Font family', 'Weight', 'Size', 'Letter spacing', 'Line height', 'Preview']}>
-          {SURFACES.map(([k, label]) => (
-            <tr key={k}>
-              <Td className="font-medium whitespace-nowrap">{label}</Td>
-              <Td><Select value={cfg[k].family} onChange={(e) => set(k, 'family', e.target.value)} className="w-56">{families.map((f) => <option key={f}>{f}</option>)}</Select></Td>
-              <Td><Select value={cfg[k].weight} onChange={(e) => set(k, 'weight', Number(e.target.value))} className="w-28">{[300, 400, 500, 600, 700, 800].map((w) => <option key={w} value={w}>{w}</option>)}</Select></Td>
-              <Td><div className="w-20"><NumberInput value={cfg[k].size} onChange={(v) => set(k, 'size', v ?? 16)} /></div></Td>
-              <Td><div className="w-20"><NumberInput value={cfg[k].letterSpacing} onChange={(v) => set(k, 'letterSpacing', v ?? 0)} step="0.1" /></div></Td>
-              <Td><div className="w-20"><NumberInput value={cfg[k].lineHeight} onChange={(v) => set(k, 'lineHeight', v ?? 1.4)} step="0.05" /></div></Td>
-              <Td><div className="max-w-xs truncate" style={{ fontFamily: `"${cfg[k].family}", 'Noto Sans SC'`, fontWeight: cfg[k].weight, fontSize: Math.min(cfg[k].size, 26), letterSpacing: cfg[k].letterSpacing, lineHeight: cfg[k].lineHeight }}>{SAMPLE}</div></Td>
-            </tr>
-          ))}
+      <PageHeader title={t.x({ th: 'ฟอนต์', en: 'Fonts', zh: '字体' })} sub={t.x({ th: 'Google Fonts หรืออัปโหลด .ttf .otf .woff .woff2 — ตั้งได้ทุกส่วนและแยกตามภาษา แล้วกด "ใช้กับทั้งระบบ" (รวมใบเสร็จ)', en: 'Google Fonts or uploaded .ttf .otf .woff .woff2 — per surface and per language, then Apply to System (receipts included)', zh: 'Google 字体或上传 .ttf .otf .woff .woff2 — 按界面和语言设置，然后应用到全系统（含收据）' })} actions={<Button onClick={() => save.mutate({ key: 'fonts', value: cfg })} loading={save.isPending}>{t.x({ th: 'ใช้กับทั้งระบบ', en: 'Apply to System', zh: '应用到全系统' })}</Button>} />
+      <Card title={t.x({ th: 'ฟอนต์แต่ละส่วนและแต่ละภาษา', en: 'Font per surface and language', zh: '各界面及各语言字体' })} padded={false}>
+        <Table head={[t.x({ th: 'ส่วน', en: 'Surface', zh: '界面' }), t.x({ th: 'ฟอนต์หลัก', en: 'Default family', zh: '默认字体' }), ...LANGS.map(([, n]) => n), t.x({ th: 'น้ำหนัก', en: 'Weight', zh: '字重' }), t.x({ th: 'ขนาด', en: 'Size', zh: '字号' }), t.x({ th: 'ระยะตัวอักษร', en: 'Letter spacing', zh: '字距' }), t.x({ th: 'ระยะบรรทัด', en: 'Line height', zh: '行高' }), t.x({ th: 'ตัวอย่าง', en: 'Preview', zh: '预览' })]}>
+          {SURFACES.map(([k, label]) => {
+            const c = cfg[k] ?? { family: 'Prompt', weight: 400, size: 16, letterSpacing: 0, lineHeight: 1.4 };
+            return (
+              <tr key={k}>
+                <Td className="font-medium whitespace-nowrap">{t.x(label)}</Td>
+                <Td><Select value={c.family} onChange={(e) => set(k, 'family', e.target.value)} className="w-44">{families.map((f) => <option key={f}>{f}</option>)}</Select></Td>
+                {LANGS.map(([lang]) => (
+                  <Td key={lang}><Select value={c.byLang?.[lang] ?? ''} onChange={(e) => setLang(k, lang, e.target.value)} className="w-40"><option value="">— {t.x({ th: 'ใช้ฟอนต์หลัก', en: 'use default', zh: '使用默认' })}</option>{families.map((f) => <option key={f}>{f}</option>)}</Select></Td>
+                ))}
+                <Td><Select value={c.weight} onChange={(e) => set(k, 'weight', Number(e.target.value))} className="w-24">{[300, 400, 500, 600, 700, 800].map((w) => <option key={w} value={w}>{w}</option>)}</Select></Td>
+                <Td><div className="w-20"><NumberInput value={c.size} onChange={(v) => set(k, 'size', v ?? 16)} /></div></Td>
+                <Td><div className="w-20"><NumberInput value={c.letterSpacing} onChange={(v) => set(k, 'letterSpacing', v ?? 0)} step="0.1" /></div></Td>
+                <Td><div className="w-20"><NumberInput value={c.lineHeight} onChange={(v) => set(k, 'lineHeight', v ?? 1.4)} step="0.05" /></div></Td>
+                <Td>
+                  <div className="max-w-xs space-y-0.5" style={{ fontWeight: c.weight, fontSize: Math.min(c.size, 20), letterSpacing: c.letterSpacing, lineHeight: c.lineHeight }}>
+                    <div className="truncate" style={{ fontFamily: `"${famOf(k, 'th')}"` }}>สวัสดี ยินดีต้อนรับ ฿459</div>
+                    <div className="truncate" style={{ fontFamily: `"${famOf(k, 'en')}"` }}>Welcome #48271</div>
+                    <div className="truncate" style={{ fontFamily: `"${famOf(k, 'zh')}", 'Noto Sans SC'` }}>欢迎光临 游乐园</div>
+                  </div>
+                </Td>
+              </tr>
+            );
+          })}
         </Table>
       </Card>
       <div className="mt-5 grid gap-5 2xl:grid-cols-[1fr_400px]">
@@ -62,7 +98,7 @@ export default function Fonts() {
           </div>
         </Card>
         <Card title="Print preview" actions={<Select value={previewSurface} onChange={(e) => setPreviewSurface(e.target.value as any)} className="w-40"><option value="receipt">Receipt</option><option value="kitchenTicket">Kitchen ticket</option></Select>}>
-          <PrintPreview payload={sampleJob(previewSurface === 'receipt' ? 'RECEIPT' : 'KITCHEN_TICKET', s.data?.settings.store, cfg[previewSurface], s.data?.settings.receipt.footer)} paperWidth={80} scale={0.55} />
+          <PrintPreview payload={sampleJob(previewSurface === 'receipt' ? 'RECEIPT' : 'KITCHEN_TICKET', s.data?.settings.store, fontForLang(cfg[previewSurface], t.lang) ?? cfg[previewSurface], s.data?.settings.receipt.footer)} paperWidth={80} scale={0.55} />
         </Card>
       </div>
       {addGoogle && <GoogleFontDialog onClose={() => setAddGoogle(false)} onDone={() => fonts.refetch()} />}

@@ -131,6 +131,8 @@ export function EntityPage(p: {
   rowActions?: (row: any) => ReactNode;
   headerActions?: ReactNode;
   deletable?: boolean;
+  /** List-only page (no create / edit form). */
+  readOnly?: boolean;
   size?: 'md' | 'lg' | 'xl' | 'full';
 }) {
   const t = useT();
@@ -140,7 +142,7 @@ export function EntityPage(p: {
   const [edit, setEdit] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const rows: any[] = q.data ? (p.rows ? p.rows(q.data) : q.data) : [];
-  const editable = can(p.perm);
+  const editable = can(p.perm) && !p.readOnly;
   const save = async () => {
     setBusy(true);
     try {
