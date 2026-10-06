@@ -212,6 +212,13 @@ export const STATUS_TEXT: Record<string, T3> = {
   WAITING_APPROVAL: { th: 'รออนุมัติ', en: 'Waiting approval', zh: '等待批准' },
   PREPARING: { th: 'กำลังเตรียม', en: 'Preparing', zh: '制作中' },
   READY: { th: 'พร้อมรับ', en: 'Ready', zh: '可取餐' },
+  QUEUED: { th: 'รอพิมพ์', en: 'Queued', zh: '排队打印' },
+  PRINTING: { th: 'กำลังพิมพ์', en: 'Printing', zh: '打印中' },
+  PRINTED: { th: 'พิมพ์แล้ว', en: 'Printed', zh: '已打印' },
+  DAMAGED: { th: 'ชำรุด', en: 'Damaged', zh: '损坏' },
+  STOLEN: { th: 'ถูกขโมย', en: 'Stolen', zh: '被盗' },
+  UPGRADE: { th: 'อัปเกรด', en: 'Upgrade', zh: '升级' },
+  OTHER: { th: 'อื่นๆ', en: 'Other', zh: '其他' },
 };
 
 export type TFn<K extends string> = ((key: K | CommonKey, vars?: Record<string, string | number | null | undefined>) => string) & {

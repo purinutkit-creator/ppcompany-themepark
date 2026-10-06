@@ -14,6 +14,12 @@ const PublicSite = lazy(() => import('./parkweb/PublicSite'));
 const MemberPortal = lazy(() => import('./member/MemberPortal'));
 const ParkKiosk = lazy(() => import('./parkkiosk/ParkKiosk'));
 const LockerStation = lazy(() => import('./parkkiosk/LockerStation'));
+const CounterApp = lazy(() => import('./counter/CounterApp'));
+const PosApp = lazy(() => import('./pos/PosApp'));
+const GateDisplay = lazy(() => import('./gate/GateDisplay'));
+const GateConsole = lazy(() => import('./gate/GateConsole'));
+const RideScanner = lazy(() => import('./ride/RideScanner'));
+const RideOperator = lazy(() => import('./ride/RideOperator'));
 
 export default function App() {
   return (
@@ -34,6 +40,14 @@ export default function App() {
           <Route path="/member/*" element={<MemberPortal />} />
           <Route path="/park-kiosk" element={<ParkKiosk />} />
           <Route path="/locker" element={<LockerStation />} />
+          <Route path="/counter/*" element={<CounterApp />} />
+          <Route path="/pos" element={<PosApp />} />
+          <Route path="/gate" element={<GateDisplay />} />
+          <Route path="/gate/:gateId" element={<GateDisplay />} />
+          <Route path="/gates" element={<GateConsole />} />
+          <Route path="/ride" element={<RideScanner />} />
+          <Route path="/ride/:scanPointId" element={<RideScanner />} />
+          <Route path="/rides" element={<RideOperator />} />
           <Route path="*" element={<Launcher />} />
         </Routes>
       </Suspense>

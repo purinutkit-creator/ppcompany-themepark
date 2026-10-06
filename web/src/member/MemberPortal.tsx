@@ -17,6 +17,7 @@ import { CustomerProvider, SiteHeader, useBoot } from '../park/CustomerShell';
 import { OnlinePay } from '../park/OnlinePay';
 import { Barcode, QrCode } from '../park/scan';
 import { PStatus, SafeImg, Stepper, TierBadge } from '../park/ui';
+import { ModifierPicker } from '../park/ModifierPicker';
 
 const M = defineStrings('member', {
   welcome: { th: 'สมาชิก', en: 'Members', zh: '会员' },
@@ -745,40 +746,6 @@ function FoodTab({ me }: { me: any }) {
       )}
       {pick && <ModifierPicker p={pick} onClose={() => setPick(null)} onAdd={(ids) => { add(pick, ids); setPick(null); }} />}
     </div>
-  );
-}
-
-function ModifierPicker({ p, onClose, onAdd }: { p: any; onClose: () => void; onAdd: (ids: string[]) => void }) {
-  const t = useT(M);
-  const [sel, setSel] = useState<string[]>(() => p.modifier_groups.flatMap((g: any) => g.modifiers.filter((m: any) => m.is_default).map((m: any) => m.id)));
-  const ok = p.modifier_groups.every((g: any) => {
-    const n = g.modifiers.filter((m: any) => sel.includes(m.id)).length;
-    return n >= (g.required ? Math.max(1, g.min_select) : g.min_select) && n <= g.max_select;
-  });
-  return (
-    <Modal open onClose={onClose} title={t.tr(p.name)} size="md" footer={<Button disabled={!ok} onClick={() => onAdd(sel)}>{t('add')}</Button>}>
-      <div className="space-y-4">
-        {p.modifier_groups.map((g: any) => (
-          <div key={g.id}>
-            <div className="mb-1 font-semibold">{t.tr(g.name)} {g.required && <span className="text-xs text-rose-600">*</span>}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {g.modifiers.map((m: any) => {
-                const on = sel.includes(m.id);
-                return (
-                  <button key={m.id} onClick={() => setSel((s) => {
-                    if (on) return s.filter((x) => x !== m.id);
-                    const inG = g.modifiers.map((x: any) => x.id);
-                    return g.selection === 'SINGLE' ? [...s.filter((x) => !inG.includes(x)), m.id] : [...s, m.id];
-                  })} className={clsx('rounded-full px-3 py-1.5 text-sm', on ? 'bg-primary text-white' : 'bg-slate-100')}>
-                    {t.tr(m.name)}{Number(m.price_delta) ? ` +${money(m.price_delta)}` : ''}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Modal>
   );
 }
 

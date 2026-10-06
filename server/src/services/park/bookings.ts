@@ -171,7 +171,7 @@ export async function searchBookings(branchId: string, f: { q?: string; filter?:
     case 'PAID': where.push(`bk.payment_status='PAID'`); break;
     case 'PENDING_VERIFICATION': where.push(`bk.status='WAITING_VERIFICATION'`); break;
     case 'CANCELLED': where.push(`bk.status IN ('CANCELLED','EXPIRED')`); break;
-    case 'REFUNDED': where.push(`bk.status='REFUNDED' OR bk.payment_status IN ('REFUNDED','PARTIALLY_REFUNDED')`); break;
+    case 'REFUNDED': where.push(`(bk.status='REFUNDED' OR bk.payment_status IN ('REFUNDED','PARTIALLY_REFUNDED'))`); break;
     case 'CHECKED_IN': where.push(`bk.status IN ('CHECKED_IN','COMPLETED')`); break;
     case 'NO_SHOW': where.push(`bk.status='NO_SHOW'`); break;
   }
