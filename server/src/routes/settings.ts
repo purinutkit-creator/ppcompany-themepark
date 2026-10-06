@@ -38,7 +38,8 @@ export default async function settingsRoutes(app: FastifyInstance) {
   app.get('/client', { preHandler: requireAnyStaff() }, async () => {
     const s = await getSettings();
     return {
-      settings: { store: s.store, theme: s.theme, fonts: s.fonts, queue: s.queue, tax: s.tax, payment: { cash: s.payment.cash, methods: s.payment.methods, card: { provider: s.payment.card.provider }, qr: { mode: s.payment.qr.mode, gatewayProvider: s.payment.qr.gatewayProvider } }, security: { managerPinActions: s.security.managerPinActions }, kitchen: s.kitchen },
+      settings: { store: s.store, theme: s.theme, fonts: s.fonts, queue: s.queue, tax: s.tax, payment: { cash: s.payment.cash, methods: s.payment.methods, card: { provider: s.payment.card.provider }, qr: { mode: s.payment.qr.mode, gatewayProvider: s.payment.qr.gatewayProvider } }, security: { managerPinActions: s.security.managerPinActions }, kitchen: s.kitchen,
+        park: s.park, gate: s.gate, ride: s.ride, rideQueue: s.rideQueue, wallet: s.wallet, points: s.points, parkPayment: s.parkPayment, locker: s.locker, shift: s.shift, offline: s.offline, ui: s.ui, member: { digitalQrTtlSec: s.member.digitalQrTtlSec } },
       fonts: await query(`SELECT id, family, source, file_url, format, weights FROM fonts ORDER BY family`),
       languages: await query(`SELECT * FROM languages ORDER BY sort`),
     };

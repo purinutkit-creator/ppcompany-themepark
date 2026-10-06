@@ -14,6 +14,7 @@ export interface AgentPrinter {
   dots_per_line: number | null;
   chars_per_line: number | null;
   raster_mode: 'AUTO' | 'TEXT' | 'RASTER';
+  driver?: 'ESCPOS' | 'ZPL' | null;
   open_drawer: boolean;
   is_enabled: boolean;
   status: string;

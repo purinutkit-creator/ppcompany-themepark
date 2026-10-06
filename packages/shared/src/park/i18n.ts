@@ -62,6 +62,20 @@ export const REASONS: Record<string, I18nText> = {
   NO_WALLET: t('บัตรนี้ไม่มีกระเป๋าเงิน', 'No wallet on this card', '此卡无钱包'),
   LOCKER_NOT_FOUND: t('ไม่พบล็อกเกอร์ของคุณ', 'No locker rented with this card', '未找到您的储物柜'),
   LOCKER_EXPIRED: t('เวลาเช่าล็อกเกอร์หมดแล้ว', 'Locker rental expired', '储物柜租期已过'),
+  LOCKER_CONTROLLER_ERROR: t('ไม่สามารถสั่งเปิดล็อกเกอร์ได้', 'Locker controller error', '储物柜控制器故障'),
+  // Package availability (booking / counter / kiosk)
+  DATE_IN_PAST: t('วันที่ผ่านมาแล้ว', 'Date has passed', '日期已过'),
+  DATE_TOO_FAR: t('จองล่วงหน้าเกินกำหนด', 'Too far in advance', '超出可预订范围'),
+  SAME_DAY_CUTOFF: t('ปิดการขายของวันนี้แล้ว', 'Sales for today have closed', '今日已停止售票'),
+  NOT_VALID_ON_DAY: t('ไม่จำหน่ายในวันนี้', 'Not sold on this day', '当天不售'),
+  BLACKOUT_DATE: t('งดจำหน่ายวันนี้', 'Not available on this date', '该日期不可用'),
+  SOLD_OUT: t('เต็มแล้ว', 'Sold out', '已售罄'),
+  PACKAGE_INACTIVE: t('ปิดการขาย', 'Not on sale', '已停售'),
+  NOT_ON_SALE_YET: t('ยังไม่เปิดขาย', 'Not on sale yet', '尚未开售'),
+  SALE_ENDED: t('หมดเวลาขาย', 'Sale ended', '已停止销售'),
+  CHANNEL_NOT_ALLOWED: t('ไม่จำหน่ายผ่านช่องทางนี้', 'Not sold on this channel', '此渠道不售'),
+  QUEUE_DISABLED: t('เครื่องเล่นนี้ไม่มีระบบคิว', 'No virtual queue for this ride', '此设施无虚拟排队'),
+  ALREADY_IN_QUEUE: t('คุณอยู่ในคิวแล้ว', 'Already in the queue', '您已在排队中'),
 };
 
 /** Labels for the validation checklist (operator console / ride operator). */

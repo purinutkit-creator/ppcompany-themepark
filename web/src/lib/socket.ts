@@ -5,7 +5,23 @@ import { deviceId } from './device';
 export type SocketAuth =
   | { token: string; branchId?: string | null }
   | { kioskToken: string }
-  | { display: 'queue'; branchCode: string };
+  | { display: 'queue'; branchCode: string }
+  | { display: 'park'; branchCode: string }
+  | { memberToken: string }
+  | { deviceToken: string }
+  | { bookingNo: string; bookingToken: string };
+
+/** Ask the server to stream one entity's events to this socket (card account, sale, gate, ride, scan point). */
+export function watch(socket: Socket | null, kind: 'account' | 'sale' | 'gate' | 'ride' | 'scanpoint', id: string | null | undefined) {
+  if (!socket || !id) return () => {};
+  const send = () => socket.emit('watch', { kind, id });
+  send();
+  socket.on('connect', send);
+  return () => {
+    socket.off('connect', send);
+    socket.emit('unwatch', { kind, id });
+  };
+}
 
 /** Connect a Socket.IO client with auth; reconnects automatically and exposes connection state. */
 export function useRealtime(auth: SocketAuth | null) {

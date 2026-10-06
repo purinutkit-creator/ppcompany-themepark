@@ -1,4 +1,4 @@
-import { buildDoc, renderDocToCanvas, renderEscPos, type PrintDoc, type PrintJobPayload, type RasterEnv } from '@kiosk/shared';
+import { renderDocToCanvas, renderPrintJob, type PrintDoc, type PrintJobPayload, type RasterEnv } from '@kiosk/shared';
 import type { PrinterConfig } from './transports';
 
 /** Raster environment backed by the browser canvas (fonts are whatever the page has loaded). */
@@ -29,21 +29,10 @@ export async function ensureFontLoaded(family?: string | null) {
   }
 }
 
+/** ESC/POS (receipt printers) or ZPL (wristband / label printers) bytes for a job. */
 export async function renderJob(payload: PrintJobPayload, printer: PrinterConfig): Promise<Uint8Array> {
-  const doc = buildDoc(payload, printer.name);
   await ensureFontLoaded(payload.font?.family);
-  return renderEscPos(doc, browserEnv, {
-    paperWidth: printer.paper_width,
-    dotsPerLine: printer.dots_per_line ?? undefined,
-    charsPerLine: printer.chars_per_line ?? undefined,
-    fontFamily: payload.font?.family,
-    fontWeight: payload.font?.weight,
-    fontSize: payload.font?.size,
-    lineHeight: payload.font?.lineHeight,
-    letterSpacing: payload.font?.letterSpacing,
-    mode: printer.raster_mode,
-    openDrawer: printer.open_drawer && payload.documentType === 'RECEIPT',
-  });
+  return renderPrintJob(payload, printer, browserEnv);
 }
 
 /** Render a document to a visible canvas (receipt / ticket preview in admin). */

@@ -6,10 +6,12 @@ import { EVENTS } from '@kiosk/shared';
 import { staffApi } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRealtime, useSocketEvent } from '../lib/socket';
-import { applyFont, applyTheme } from '../lib/theme';
+import { applyTheme } from '../lib/theme';
+import { useSurfaceFont, useT, useUiLang } from '../lib/lang';
 import { useBrowserPrintExecutor } from '../printing/executor';
 import { Loading, Empty, Button } from './ui';
 
+export type StaffSurface = 'admin' | 'cashier' | 'kds' | 'counter' | 'pos' | 'gate' | 'ride';
 interface StaffRt {
   socket: Socket | null;
   connected: boolean;
@@ -24,7 +26,7 @@ export const useStaffRt = () => {
 };
 
 /** Auth gate + theme/font for a staff surface + realtime socket + device print executor. */
-export function StaffShell({ children, perms, surface }: { children: ReactNode; perms: string[]; surface: 'admin' | 'cashier' | 'kds' }) {
+export function StaffShell({ children, perms, surface }: { children: ReactNode; perms: string[]; surface: StaffSurface }) {
   const { user, loading, token, branchId, logout } = useAuth();
   const loc = useLocation();
   const qc = useQueryClient();
@@ -32,11 +34,14 @@ export function StaffShell({ children, perms, surface }: { children: ReactNode; 
   const { socket, connected } = useRealtime(user && token ? { token, branchId } : null);
   const printer = useBrowserPrintExecutor(socket, !!user && surface !== 'kds');
 
+  const setOverrides = useUiLang((s) => s.setOverrides);
+  const t = useT();
   useEffect(() => {
     if (!client.data) return;
     applyTheme(client.data.settings.theme);
-    applyFont(client.data.settings.fonts?.[surface], client.data.fonts);
-  }, [client.data, surface]);
+    setOverrides(client.data.languages ?? []);
+  }, [client.data, setOverrides]);
+  useSurfaceFont(client.data?.settings.fonts, client.data?.fonts, surface);
   useSocketEvent(socket, EVENTS.SETTINGS_UPDATED, () => void qc.invalidateQueries({ queryKey: ['client-settings'] }));
 
   if (loading) return <Loading />;
@@ -44,10 +49,10 @@ export function StaffShell({ children, perms, surface }: { children: ReactNode; 
   if (perms.length && !perms.some((p) => user.permissions.includes(p))) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Empty title="No permission" sub={`Your role (${user.role}) cannot open this screen.`} action={<Button onClick={() => logout()}>Sign in as another user</Button>} />
+        <Empty title={t.x({ th: 'ไม่มีสิทธิ์ใช้งาน', en: 'No permission', zh: '没有权限' })} sub={`${user.role}`} action={<Button onClick={() => logout()}>{t.x({ th: 'เข้าสู่ระบบด้วยผู้ใช้อื่น', en: 'Sign in as another user', zh: '使用其他用户登录' })}</Button>} />
       </div>
     );
   }
-  if (!branchId) return <Empty title="No branch selected" />;
+  if (!branchId) return <Empty title={t.x({ th: 'ยังไม่ได้เลือกสาขา', en: 'No branch selected', zh: '未选择分店' })} />;
   return <Ctx.Provider value={{ socket, connected, client: client.data, printer }}>{children}</Ctx.Provider>;
 }

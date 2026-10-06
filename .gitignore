@@ -13,3 +13,4 @@ print-agent/.cache/
 .seed-output.json
 e2e-shots/
 fake-printer-out/
+scripts/.smoke/

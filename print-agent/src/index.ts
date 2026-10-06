@@ -2,6 +2,7 @@ import 'dotenv/config';
 import os from 'node:os';
 import { io } from 'socket.io-client';
 import { EVENTS } from '@kiosk/shared';
+import { startEdge } from './edge';
 import { renderJob, syncFonts } from './render';
 import { scanDevices, scanNetwork } from './discovery';
 import { transportFor, type AgentPrinter } from './transports';
@@ -9,12 +10,16 @@ import { transportFor, type AgentPrinter } from './transports';
 const VERSION = '1.0.0';
 const SERVER = (process.env.SERVER_URL || 'http://localhost:4000').replace(/\/$/, '');
 const TOKEN = process.env.AGENT_TOKEN || '';
+const DEVICE_TOKEN = process.env.DEVICE_TOKEN || '';
 const CACHE = process.env.CACHE_DIR || './.cache';
-if (!TOKEN) {
-  console.error('AGENT_TOKEN is required (Admin → Printers → Print agents → New agent)');
+if (!TOKEN && !DEVICE_TOKEN) {
+  console.error('AGENT_TOKEN (printers: Admin → Printers → Print agents) and/or DEVICE_TOKEN (gates / lockers: Admin → Devices) is required');
   process.exit(1);
 }
 const log = (...a: unknown[]) => console.log(new Date().toISOString(), ...a);
+// Gate / locker edge controller (driver EDGE_AGENT) — optional, runs alongside the print agent.
+if (DEVICE_TOKEN) startEdge({ server: SERVER, deviceToken: DEVICE_TOKEN, version: VERSION, log });
+if (!TOKEN) log('AGENT_TOKEN not set — printing disabled, running as edge controller only');
 
 async function api<T = any>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${SERVER}/api${path}`, {
@@ -101,7 +106,7 @@ async function refreshFonts() {
   await syncFonts(fonts, SERVER, CACHE, log);
 }
 
-const socket = io(SERVER, { auth: { agentToken: TOKEN }, transports: ['websocket', 'polling'], reconnectionDelayMax: 10000 });
+const socket = io(SERVER, { auth: { agentToken: TOKEN }, autoConnect: !!TOKEN, transports: ['websocket', 'polling'], reconnectionDelayMax: 10000 });
 socket.on('connect', async () => {
   log(`connected to ${SERVER}`);
   socket.emit('heartbeat', { version: VERSION, hostname: os.hostname() });

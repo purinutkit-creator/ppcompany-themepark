@@ -10,6 +10,10 @@ const KdsApp = lazy(() => import('./kds/KdsApp'));
 const QueueDisplay = lazy(() => import('./queue/QueueDisplay'));
 const AdminApp = lazy(() => import('./admin/AdminApp'));
 const OrderLookup = lazy(() => import('./pages/OrderLookup'));
+const PublicSite = lazy(() => import('./parkweb/PublicSite'));
+const MemberPortal = lazy(() => import('./member/MemberPortal'));
+const ParkKiosk = lazy(() => import('./parkkiosk/ParkKiosk'));
+const LockerStation = lazy(() => import('./parkkiosk/LockerStation'));
 
 export default function App() {
   return (
@@ -26,6 +30,10 @@ export default function App() {
           <Route path="/queue/:branchCode" element={<QueueDisplay />} />
           <Route path="/admin/*" element={<AdminApp />} />
           <Route path="/o/:id" element={<OrderLookup />} />
+          <Route path="/park/*" element={<PublicSite />} />
+          <Route path="/member/*" element={<MemberPortal />} />
+          <Route path="/park-kiosk" element={<ParkKiosk />} />
+          <Route path="/locker" element={<LockerStation />} />
           <Route path="*" element={<Launcher />} />
         </Routes>
       </Suspense>

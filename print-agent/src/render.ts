@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { GlobalFonts, createCanvas, loadImage } from '@napi-rs/canvas';
-import { buildDoc, renderEscPos, type PrintJobPayload, type RasterEnv } from '@kiosk/shared';
+import { renderPrintJob, type PrintJobPayload, type RasterEnv } from '@kiosk/shared';
 import type { AgentPrinter } from './transports';
 
 /** Raster environment backed by @napi-rs/canvas (Skia) — renders Thai / Chinese / custom fonts. */
@@ -60,18 +60,7 @@ export async function syncFonts(fonts: { family: string; source: string; file_ur
   }
 }
 
+/** ESC/POS (receipt printers) or ZPL (wristband / label printers) bytes for a job. */
 export async function renderJob(payload: PrintJobPayload, printer: AgentPrinter, baseUrl: string): Promise<Uint8Array> {
-  const doc = buildDoc(payload, printer.name);
-  return renderEscPos(doc, nodeEnv(baseUrl), {
-    paperWidth: printer.paper_width,
-    dotsPerLine: printer.dots_per_line ?? undefined,
-    charsPerLine: printer.chars_per_line ?? undefined,
-    fontFamily: payload.font?.family,
-    fontWeight: payload.font?.weight,
-    fontSize: payload.font?.size,
-    lineHeight: payload.font?.lineHeight,
-    letterSpacing: payload.font?.letterSpacing,
-    mode: printer.raster_mode,
-    openDrawer: printer.open_drawer && payload.documentType === 'RECEIPT',
-  });
+  return renderPrintJob(payload, printer, nodeEnv(baseUrl));
 }

@@ -314,6 +314,11 @@ export default async function parkMemberRoutes(app: FastifyInstance) {
       await ownSale(req, p.id);
       return requestSaleVerification(p.id, p.paymentId, b, { type: 'MEMBER', id: req.member!.id });
     });
+    auth.post('/sales/:id/payments/:paymentId/cancel', async (req) => {
+      const p = parse(z.object({ id: uuid, paymentId: uuid }), req.params);
+      await ownSale(req, p.id);
+      return cancelPaymentAttempt(p.id, p.paymentId);
+    });
     auth.post('/sales/:id/payments/:paymentId/sandbox', async (req) => {
       const p = parse(z.object({ id: uuid, paymentId: uuid }), req.params);
       const b = parse(z.object({ outcome: z.enum(['succeeded', 'failed', 'cancelled']) }), req.body);
@@ -322,6 +327,13 @@ export default async function parkMemberRoutes(app: FastifyInstance) {
     });
 
     // ---------------- mobile food ordering (paid from the member wallet)
+    auth.get('/menu', async (req) => {
+      const q = parse(z.object({ branchCode: z.string().max(40) }), req.query);
+      const branch = await one<any>(`SELECT id FROM branches WHERE code=$1 AND is_active`, [q.branchCode.toUpperCase()]);
+      if (!branch) throw notFound('Branch');
+      const { getMenu } = await import('../../services/menu');
+      return getMenu(branch.id);
+    });
     auth.post('/food-orders', async (req) => {
       const b = parse(
         z.object({

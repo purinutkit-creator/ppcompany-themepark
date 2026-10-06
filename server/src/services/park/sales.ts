@@ -18,7 +18,7 @@ import { getSettings } from '../../lib/settings';
 import { getProvider } from '../providers';
 import { branchInfo, branchToday, createAccount, genPaymentNo, genRefundNo, genSaleNo, genTicketNo, parkSettings, round2, type ParkActor } from './common';
 import { checkPackageAvailability, loadPackage, loadParkPromotions, packagePriceRow, resolvePackagePrice, rideAddonPrice } from './catalog';
-import { effectiveStatus, issueCredential, resolveScan } from './credentials';
+import { effectiveStatus, issueCredential, payloadsFor, resolveScan } from './credentials';
 import { createAddonEntitlement, createTicketEntitlements, packageBenefits } from './entitlements';
 import { applyMembership, memberPricingCtx, membershipQuote } from './members';
 import { notify } from './notifications';
@@ -1173,7 +1173,9 @@ export async function getSaleDetail(db: Db, saleId: string) {
     await query<any>(`SELECT v.*, u.name AS decided_by_name FROM payment_verification_requests v LEFT JOIN users u ON u.id=v.decided_by WHERE v.sale_id=$1 ORDER BY v.requested_at`, [saleId], db),
     await query<any>(`SELECT j.id, j.status, j.payload->>'title' AS title, j.created_at, j.printed_at, j.last_error, pr.name AS printer_name FROM print_jobs j LEFT JOIN printers pr ON pr.id=j.printer_id WHERE j.sale_id=$1 ORDER BY j.created_at`, [saleId], db),
   ];
-  return { sale, items, payments, refunds, tickets, verifications, prints };
+  // Signed QR / barcode payloads for usable tickets (printed tickets, kiosk / counter display).
+  const withPayloads = tickets.map((t) => (['PAID', 'ACTIVE'].includes(t.status) ? { ...t, ...payloadsFor({ code: t.credential_code ?? t.ticket_no, token_version: t.token_version ?? 1 }) } : t));
+  return { sale, items, payments, refunds, tickets: withPayloads, verifications, prints };
 }
 
 // ------------------------------------------------------------------ background jobs

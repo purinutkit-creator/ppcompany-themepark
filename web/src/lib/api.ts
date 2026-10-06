@@ -32,7 +32,7 @@ export const storage = {
   },
 };
 
-type Mode = 'staff' | 'kiosk' | 'public' | 'device';
+type Mode = 'staff' | 'kiosk' | 'public' | 'device' | 'park' | 'member' | 'parkdevice';
 export interface ReqOpts {
   method?: string;
   body?: unknown;
@@ -61,6 +61,20 @@ async function request<T>(mode: Mode, path: string, o: ReqOpts = {}): Promise<T>
     const b = storage.get('staff_branch');
     if (b) headers['X-Branch-Id'] = b;
   }
+  if (mode === 'park' || mode === 'parkdevice') {
+    // Staff screens act as the signed-in staff. Device screens (gate / ride / locker) act as the paired
+    // device when a device token exists (the server gives a device token precedence), staff otherwise.
+    const d = mode === 'parkdevice' ? storage.get('park_device_token') : null;
+    if (d) headers['X-Device-Token'] = d;
+    const t = !d ? storage.get('staff_token') : null;
+    if (t) headers.Authorization = `Bearer ${t}`;
+    const b = storage.get('staff_branch');
+    if (b && t) headers['X-Branch-Id'] = b;
+  }
+  if (mode === 'member') {
+    const t = storage.get('member_token');
+    if (t) headers.Authorization = `Bearer ${t}`;
+  }
   if (o.idempotencyKey) headers['Idempotency-Key'] = o.idempotencyKey;
   let body: BodyInit | undefined;
   if (o.body instanceof FormData) body = o.body;
@@ -87,7 +101,8 @@ async function request<T>(mode: Mode, path: string, o: ReqOpts = {}): Promise<T>
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
     const err = data?.error ?? {};
-    if (res.status === 401 && mode === 'staff') window.dispatchEvent(new CustomEvent('staff-unauthorized'));
+    if (res.status === 401 && (mode === 'staff' || mode === 'park')) window.dispatchEvent(new CustomEvent('staff-unauthorized'));
+    if (res.status === 401 && mode === 'member') window.dispatchEvent(new CustomEvent('member-unauthorized'));
     throw new ApiError(res.status, err.code ?? 'HTTP_' + res.status, err.message ?? res.statusText, err.details);
   }
   return data as T;
@@ -106,6 +121,15 @@ export const kioskApi = <T = any>(path: string, o?: ReqOpts) => request<T>('kios
 /** Print executor endpoints: authenticates as the kiosk if paired, otherwise as the logged-in staff device. */
 export const deviceApi = <T = any>(path: string, o?: ReqOpts) => request<T>('device', `/api${path}`, o);
 export const publicApi = <T = any>(path: string, o?: ReqOpts) => request<T>('public', `/api/public${path}`, o);
+/** Park staff screens (staff token; a paired device token is sent too when present). */
+export const parkApi = <T = any>(path: string, o?: ReqOpts) => request<T>('park', `/api/park${path}`, o);
+/** Park device screens (gate display, ride scanner, locker station): device token first, staff as fallback. */
+export const parkDeviceApi = <T = any>(path: string, o?: ReqOpts) => request<T>('parkdevice', `/api/park${path}`, o);
+export const parkPublicApi = <T = any>(path: string, o?: ReqOpts) => request<T>('public', `/api/park/public${path}`, o);
+/** Park endpoints from the paired self-service kiosk (X-Kiosk-Token). */
+export const parkKioskApi = <T = any>(path: string, o?: ReqOpts) => request<T>('kiosk', `/api/park${path}`, o);
+export const memberApi = <T = any>(path: string, o?: ReqOpts) => request<T>('member', `/api/park/member${path}`, o);
+export const newKey = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
@@ -117,7 +141,7 @@ export function errorMessage(e: unknown): string {
 
 /** Download a binary export (CSV/XLSX) with staff auth. */
 export async function downloadStaff(path: string, filename: string) {
-  const res = await request<Response>('staff', `/api${path}`, { raw: true });
+  const res = await request<Response>('park', `/api${path}`, { raw: true });
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
