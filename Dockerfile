@@ -31,4 +31,5 @@ RUN mkdir -p /data/uploads
 WORKDIR /app/server
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/index.js"]
+# Migrations + base data (demo data only on an empty database), then the server. Both are idempotent.
+CMD ["sh", "-c", "node dist/seed.js && exec node dist/index.js"]
