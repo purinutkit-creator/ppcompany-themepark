@@ -12,6 +12,22 @@ import { elapsed, minutesSince, time } from '../lib/format';
 import { StaffShell, useStaffRt } from '../components/StaffShell';
 import { ConnectionDot, Modal, toast } from '../components/ui';
 import { OrderDetail } from '../components/OrderDetail';
+import { tt } from '../lib/legacy-i18n';
+import { useUiLang } from '../lib/lang';
+
+const K = {
+  NEW: { th: 'ใหม่', en: 'NEW', zh: '新订单' },
+  PREPARING: { th: 'กำลังทำ', en: 'PREPARING', zh: '制作中' },
+  READY: { th: 'พร้อมเสิร์ฟ', en: 'READY', zh: '可取餐' },
+  START: { th: 'เริ่มทำ', en: 'START', zh: '开始' },
+  DONE: { th: 'เสร็จ', en: 'DONE', zh: '完成' },
+  RECALL: { th: 'เรียกคืน', en: 'RECALL', zh: '撤回' },
+  PICKED: { th: 'รับแล้ว', en: 'PICKED UP', zh: '已取餐' },
+  DINE_IN: { th: 'ทานที่ร้าน', en: 'DINE IN', zh: '堂食' },
+  TAKE_AWAY: { th: 'กลับบ้าน', en: 'TAKE AWAY', zh: '外带' },
+  NO: { th: 'ไม่ใส่', en: 'NO', zh: '不要' },
+  EXTRA: { th: 'เพิ่ม', en: 'EXTRA', zh: '加' },
+} as const;
 
 export default function KdsApp() {
   return (
@@ -31,7 +47,9 @@ function Kds() {
   const [now, setNow] = useState(Date.now());
   const [detail, setDetail] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [lang, setLang] = useState<'th' | 'en' | 'zh'>('th');
+  const lang = useUiLang((s) => s.lang);
+  const setLang = useUiLang((s) => s.setLang);
+  const kl = (key: keyof typeof K) => K[key][lang];
   const stations = useQuery({ queryKey: ['stations'], queryFn: () => staffApi<any[]>('/kitchen/stations') });
   const q = useQuery({ queryKey: ['kds', stationId ?? 'all'], queryFn: () => staffApi<any>(`/kitchen/orders${stationId ? `?stationId=${stationId}` : ''}`), refetchInterval: 20000 });
   useEffect(() => {
@@ -44,7 +62,7 @@ function Kds() {
     refresh();
   });
   useSocketEvent(socket, [EVENTS.KITCHEN_PREPARING, EVENTS.KITCHEN_UPDATED, EVENTS.ORDER_READY, EVENTS.QUEUE_UPDATED, EVENTS.ORDER_CANCELLED], refresh);
-  useSocketEvent(socket, EVENTS.PRINTER_ERROR, (d) => toast.error(d.message, d.orderNumber ? `Order #${d.orderNumber}` : undefined));
+  useSocketEvent(socket, EVENTS.PRINTER_ERROR, (d) => toast.error(d.message, d.orderNumber ? `${tt('Order #')}${d.orderNumber}` : undefined));
   useOnReconnect(socket, refresh);
 
   const orders: any[] = q.data?.orders ?? [];
@@ -75,9 +93,9 @@ function Kds() {
     <div className="flex h-full flex-col bg-slate-950 text-white" onPointerDown={unlockAudio}>
       <header className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4">
         <ChefHat className="h-7 w-7 text-amber-400" />
-        <div className="text-xl font-bold">KDS {stationName ? `· ${tr(stationName.name, lang)}` : '· All stations'}</div>
+        <div className="text-xl font-bold">KDS {stationName ? `· ${tr(stationName.name, lang)}` : `· ${tt('All stations')}`}</div>
         <div className="ml-4 flex gap-1 overflow-x-auto">
-          <StationBtn active={!stationId} onClick={() => nav('/kds')} label="All" />
+          <StationBtn active={!stationId} onClick={() => nav('/kds')} label={tt('All')} />
           {stations.data?.filter((s) => s.is_active).map((s) => (
             <StationBtn key={s.id} active={stationId === s.id} onClick={() => nav(`/kds/${s.id}`)} label={tr(s.name, lang)} color={s.color} />
           ))}
@@ -100,7 +118,7 @@ function Kds() {
         {(['NEW', 'PREPARING', 'READY'] as const).map((col) => (
           <section key={col} className="flex min-h-0 flex-col rounded-2xl bg-white/5">
             <div className={clsx('flex items-center justify-between rounded-t-2xl px-4 py-2 text-lg font-bold', col === 'NEW' ? 'bg-sky-600' : col === 'PREPARING' ? 'bg-amber-600' : 'bg-emerald-600')}>
-              <span>{col === 'NEW' ? 'NEW · ใหม่' : col === 'PREPARING' ? 'PREPARING · กำลังทำ' : 'READY · พร้อมเสิร์ฟ'}</span>
+              <span>{kl(col)}</span>
               <span className="rounded-full bg-black/25 px-3">{cols[col].length}</span>
             </div>
             <div className="scroll-thin flex-1 space-y-3 overflow-y-auto p-3">
@@ -115,7 +133,7 @@ function Kds() {
                         <div className="text-4xl font-black tracking-wider">#{o.order_number}</div>
                         <div className="mt-1 flex items-center gap-2 text-sm text-white/70">
                           {o.order_type === 'DINE_IN' ? <Utensils className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
-                          <b className={o.order_type === 'TAKE_AWAY' ? 'text-amber-300' : ''}>{o.order_type === 'DINE_IN' ? 'DINE IN' : 'TAKE AWAY'}</b>
+                          <b className={o.order_type === 'TAKE_AWAY' ? 'text-amber-300' : ''}>{kl(o.order_type === 'DINE_IN' ? 'DINE_IN' : 'TAKE_AWAY')}</b>
                           · {o.kiosk_code ?? 'POS'} · {time(o.paid_at)}
                         </div>
                       </button>
@@ -133,7 +151,7 @@ function Kds() {
                           </div>
                           {i.modifiers.map((m: any, k: number) => (
                             <div key={k} className={clsx('ml-12 text-base', m.kind === 'REMOVE' ? 'font-semibold text-rose-300' : m.kind === 'EXTRA' ? 'font-semibold text-amber-300' : 'text-white/75')}>
-                              {m.kind === 'REMOVE' ? '✕ NO ' : m.kind === 'EXTRA' ? '＋ EXTRA ' : '• '}
+                              {m.kind === 'REMOVE' ? `✕ ${kl('NO')} ` : m.kind === 'EXTRA' ? `＋ ${kl('EXTRA')} ` : '• '}
                               {tr(m.name, lang)}
                             </div>
                           ))}
@@ -144,12 +162,12 @@ function Kds() {
                     {o.note && <div className="mt-2 rounded bg-white/10 px-2 py-1 text-sm">📝 {o.note}</div>}
                     {can('kitchen.manage') && (
                       <div className="mt-4 flex gap-2">
-                        {col === 'NEW' && <KdsBtn tone="bg-sky-500" busy={busy === o.id + 'start'} onClick={() => act(o.id, 'start')}>START</KdsBtn>}
-                        {col !== 'READY' && <KdsBtn tone="bg-emerald-500" busy={busy === o.id + 'done'} onClick={() => act(o.id, 'done')}>DONE</KdsBtn>}
+                        {col === 'NEW' && <KdsBtn tone="bg-sky-500" busy={busy === o.id + 'start'} onClick={() => act(o.id, 'start')}>{kl('START')}</KdsBtn>}
+                        {col !== 'READY' && <KdsBtn tone="bg-emerald-500" busy={busy === o.id + 'done'} onClick={() => act(o.id, 'done')}>{kl('DONE')}</KdsBtn>}
                         {col === 'READY' && (
                           <>
-                            <KdsBtn tone="bg-white/15" busy={busy === o.id + 'recall'} onClick={() => act(o.id, 'recall')}><RotateCcw className="mr-1 inline h-5 w-5" /> RECALL</KdsBtn>
-                            <KdsBtn tone="bg-emerald-600" busy={busy === o.id + 'pickup'} onClick={() => act(o.id, 'pickup')}>PICKED UP</KdsBtn>
+                            <KdsBtn tone="bg-white/15" busy={busy === o.id + 'recall'} onClick={() => act(o.id, 'recall')}><RotateCcw className="mr-1 inline h-5 w-5" /> {kl('RECALL')}</KdsBtn>
+                            <KdsBtn tone="bg-emerald-600" busy={busy === o.id + 'pickup'} onClick={() => act(o.id, 'pickup')}>{kl('PICKED')}</KdsBtn>
                           </>
                         )}
                       </div>
@@ -161,7 +179,7 @@ function Kds() {
           </section>
         ))}
       </div>
-      <Modal open={!!detail} onClose={() => setDetail(null)} title="Order detail" size="xl">
+      <Modal open={!!detail} onClose={() => setDetail(null)} title={tt('Order detail')} size="xl">
         {detail && <div className="text-slate-900"><OrderDetail id={detail} /></div>}
       </Modal>
     </div>

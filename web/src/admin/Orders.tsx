@@ -7,6 +7,7 @@ import { dateOnly, dateTime, money } from '../lib/format';
 import { Button, Card, Empty, Field, Input, Loading, PageHeader, Select, StatusBadge, Table, Td } from '../components/ui';
 import { OrderDetail } from '../components/OrderDetail';
 import { useList } from './hooks';
+import { tt } from '../lib/legacy-i18n';
 
 const STATUSES = ['CREATED', 'WAITING_PAYMENT', 'WAITING_CASH_PAYMENT', 'WAITING_CARD', 'WAITING_VERIFICATION', 'PAID', 'CONFIRMED', 'NEW', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED', 'REFUNDED'];
 
@@ -17,7 +18,7 @@ export default function Orders() {
     return (
       <div>
         <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => nav('/admin/orders')} className="mb-3">
-          Back to orders
+          {tt('Back to orders')}
         </Button>
         <Card>
           <OrderDetail id={id} />
@@ -47,38 +48,38 @@ function OrderList() {
   const rows = list.data?.orders ?? [];
   return (
     <div>
-      <PageHeader title="Orders" sub="All orders with filters — click an order for its full timeline" />
+      <PageHeader title={tt('Orders')} sub={tt('All orders with filters — click an order for its full timeline')} />
       <Card>
         <div className="mb-4 grid gap-3 md:grid-cols-6">
-          <Field label="From"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label="To"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
-          <Field label="Status">
+          <Field label={tt('From')}><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label={tt('To')}><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          <Field label={tt('Status')}>
             <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All</option>
+              <option value="">{tt('All')}</option>
               {STATUSES.map((s) => <option key={s}>{s}</option>)}
             </Select>
           </Field>
-          <Field label="Payment">
+          <Field label={tt('Payment')}>
             <Select value={method} onChange={(e) => setMethod(e.target.value)}>
-              <option value="">All</option><option>QR</option><option>CASH</option><option>CARD</option><option>OTHER</option>
+              <option value="">{tt('All')}</option><option>QR</option><option>CASH</option><option>CARD</option><option>OTHER</option>
             </Select>
           </Field>
-          <Field label="Kiosk">
+          <Field label={tt('Kiosk')}>
             <Select value={kioskId} onChange={(e) => setKioskId(e.target.value)}>
-              <option value="">All</option>
+              <option value="">{tt('All')}</option>
               {kiosks.data?.map((k: any) => <option key={k.id} value={k.id}>{k.code}</option>)}
             </Select>
           </Field>
-          <Field label="Order #"><Input value={q} onChange={(e) => setQ(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="48271" /></Field>
+          <Field label={tt('Order #')}><Input value={q} onChange={(e) => setQ(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="48271" /></Field>
         </div>
-        {list.isLoading ? <Loading /> : rows.length === 0 ? <Empty title="No orders" /> : (
+        {list.isLoading ? <Loading /> : rows.length === 0 ? <Empty title={tt('No orders')} /> : (
           <Table head={['Order #', 'Created', 'Kiosk', 'Type', 'Items', 'Total', 'Payment', 'Status', 'Payment status']}>
             {rows.map((o: any) => (
               <tr key={o.id} className="hover:bg-slate-50">
                 <Td><Link to={`/admin/orders/${o.id}`} className="font-bold text-primary">#{o.order_number}</Link></Td>
                 <Td>{dateTime(o.created_at)}</Td>
                 <Td>{o.kiosk_code ?? o.source}</Td>
-                <Td>{o.order_type === 'DINE_IN' ? 'Dine in' : 'Take away'}</Td>
+                <Td>{o.order_type === 'DINE_IN' ? tt('Dine in') : tt('Take away')}</Td>
                 <Td>{o.item_count}</Td>
                 <Td className="font-semibold">{money(o.total)}</Td>
                 <Td>{o.payment_method ?? '—'}</Td>

@@ -7,6 +7,7 @@ import { dateOnly, dateTime, money } from '../lib/format';
 import { Button, Card, Empty, ErrorBox, Field, Input, Loading, PageHeader, Select, Table, Td, toast } from '../components/ui';
 import { useList } from './hooks';
 import { tr } from '@kiosk/shared';
+import { tt } from '../lib/legacy-i18n';
 
 const REPORTS: [string, string][] = [
   ['daily-sales', 'Daily Sales'], ['hourly-sales', 'Hourly Sales'], ['product-sales', 'Product Sales'], ['category-sales', 'Category Sales'],
@@ -65,43 +66,43 @@ export default function Reports() {
   return (
     <div>
       <PageHeader
-        title="Reports"
-        sub="Filter, review and export (PDF / Excel / CSV)"
+        title={tt('Reports')}
+        sub={tt('Filter, review and export (PDF / Excel / CSV)')}
         actions={can('reports.export') && (
           <>
             <Button variant="outline" icon={<Printer className="h-4 w-4" />} onClick={exportPdf} disabled={!q.data}>PDF</Button>
-            <Button variant="outline" icon={<FileSpreadsheet className="h-4 w-4" />} onClick={() => exp('xlsx')}>Excel</Button>
+            <Button variant="outline" icon={<FileSpreadsheet className="h-4 w-4" />} onClick={() => exp('xlsx')}>{tt('Excel')}</Button>
             <Button variant="outline" icon={<Download className="h-4 w-4" />} onClick={() => exp('csv')}>CSV</Button>
           </>
         )}
       />
       <Card>
         <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
-          <Field label="Report" className="md:col-span-2">
+          <Field label={tt('Report')} className="md:col-span-2">
             <Select value={type} onChange={(e) => setType(e.target.value)}>
-              {REPORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              {REPORTS.map(([k, l]) => <option key={k} value={k}>{tt(l)}</option>)}
             </Select>
           </Field>
-          <Field label="From"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label="To"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
-          <Field label="Hour from"><Input type="number" min={0} max={23} value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} placeholder="0" /></Field>
-          <Field label="Hour to"><Input type="number" min={0} max={23} value={hourTo} onChange={(e) => setHourTo(e.target.value)} placeholder="23" /></Field>
-          <Field label="Kiosk">
-            <Select value={kioskId} onChange={(e) => setKioskId(e.target.value)}><option value="">All</option>{kiosks.data?.map((k: any) => <option key={k.id} value={k.id}>{k.code}</option>)}</Select>
+          <Field label={tt('From')}><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label={tt('To')}><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          <Field label={tt('Hour from')}><Input type="number" min={0} max={23} value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} placeholder="0" /></Field>
+          <Field label={tt('Hour to')}><Input type="number" min={0} max={23} value={hourTo} onChange={(e) => setHourTo(e.target.value)} placeholder="23" /></Field>
+          <Field label={tt('Kiosk')}>
+            <Select value={kioskId} onChange={(e) => setKioskId(e.target.value)}><option value="">{tt('All')}</option>{kiosks.data?.map((k: any) => <option key={k.id} value={k.id}>{k.code}</option>)}</Select>
           </Field>
-          <Field label="Payment">
-            <Select value={method} onChange={(e) => setMethod(e.target.value)}><option value="">All</option><option>QR</option><option>CASH</option><option>CARD</option><option>OTHER</option></Select>
+          <Field label={tt('Payment')}>
+            <Select value={method} onChange={(e) => setMethod(e.target.value)}><option value="">{tt('All')}</option><option>QR</option><option>CASH</option><option>CARD</option><option>OTHER</option></Select>
           </Field>
-          <Field label="Category" className="md:col-span-2">
-            <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">All</option>{cats.data?.filter((c: any) => c.kind === 'STANDARD').map((c: any) => <option key={c.id} value={c.id}>{tr(c.name, 'th')}</option>)}</Select>
+          <Field label={tt('Category')} className="md:col-span-2">
+            <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">{tt('All')}</option>{cats.data?.filter((c: any) => c.kind === 'STANDARD').map((c: any) => <option key={c.id} value={c.id}>{tr(c.name, 'th')}</option>)}</Select>
           </Field>
-          <Field label="Product" className="md:col-span-2">
-            <Select value={productId} onChange={(e) => setProductId(e.target.value)}><option value="">All</option>{products.data?.map((x: any) => <option key={x.id} value={x.id}>{tr(x.translations?.th ? { th: x.translations.th.name } : {}, 'th') || x.sku}</option>)}</Select>
+          <Field label={tt('Product')} className="md:col-span-2">
+            <Select value={productId} onChange={(e) => setProductId(e.target.value)}><option value="">{tt('All')}</option>{products.data?.map((x: any) => <option key={x.id} value={x.id}>{tr(x.translations?.th ? { th: x.translations.th.name } : {}, 'th') || x.sku}</option>)}</Select>
           </Field>
         </div>
       </Card>
       <Card className="mt-5" title={q.data?.title}>
-        {q.isLoading ? <Loading /> : q.error ? <ErrorBox error={q.error} /> : q.data.rows.length === 0 ? <Empty title="No data for these filters" /> : (
+        {q.isLoading ? <Loading /> : q.error ? <ErrorBox error={q.error} /> : q.data.rows.length === 0 ? <Empty title={tt('No data for these filters')} /> : (
           <Table head={q.data.columns.map((c: any) => c.label)}>
             {q.data.rows.map((r: any, i: number) => (
               <tr key={i}>{q.data.columns.map((c: any) => <Td key={c.key} className={c.type === 'money' || c.type === 'number' ? 'text-right tabular-nums' : ''}>{fmt(c, r[c.key])}</Td>)}</tr>

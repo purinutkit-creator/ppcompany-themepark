@@ -8,6 +8,7 @@ import { useAuth } from '../lib/auth';
 import { dateTime, money, time } from '../lib/format';
 import { Badge, Button, ErrorBox, Loading, Modal, NumberInput, Field, Select, StatusBadge, Input, confirmDialog, promptDialog, toast, withManagerApproval } from './ui';
 import { CashDialog } from './CashDialog';
+import { tt } from '../lib/legacy-i18n';
 
 const EVENT_LABEL: Record<string, string> = {
   ORDER_CREATED: 'Order created',
@@ -89,16 +90,16 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
             <StatusBadge status={o.payment_status} />
             <Badge className="bg-slate-800 text-white">{o.order_type === 'DINE_IN' ? 'DINE IN' : 'TAKE AWAY'}</Badge>
             <Badge>{o.kiosk_code ?? (o.source === 'CASHIER' ? 'POS' : '—')}</Badge>
-            {o.offline_ref && <Badge className="bg-amber-100 text-amber-800">Offline {o.offline_ref}</Badge>}
+            {o.offline_ref && <Badge className="bg-amber-100 text-amber-800">{tt('Offline')} {o.offline_ref}</Badge>}
           </div>
           <div className="mt-1 text-xs text-slate-500">
             Created {dateTime(o.created_at)} · ID <span className="font-mono">{o.id.slice(0, 8)}</span>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm text-slate-500">Total</div>
+          <div className="text-sm text-slate-500">{tt('Total')}</div>
           <div className="text-3xl font-bold">{money(o.total)}</div>
-          {Number(o.refunded_amount) > 0 && <div className="text-sm text-fuchsia-700">Refunded {money(o.refunded_amount)}</div>}
+          {Number(o.refunded_amount) > 0 && <div className="text-sm text-fuchsia-700">{tt('Refunded')} {money(o.refunded_amount)}</div>}
         </div>
       </div>
 
@@ -106,7 +107,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
       <div className="flex flex-wrap gap-2">
         {open && !paid && can('payments.cash') && (
           <Button variant="success" icon={<Banknote className="h-4 w-4" />} onClick={() => setCash(true)}>
-            Receive cash
+            {tt('Receive cash')}
           </Button>
         )}
         {openVerification && can('payments.verify') && (
@@ -123,7 +124,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
               variant="danger"
               icon={<XCircle className="h-4 w-4" />}
               onClick={async () => {
-                const reason = await promptDialog('Reject payment — reason', 'e.g. Amount does not match / slip not found');
+                const reason = await promptDialog(tt('Reject payment — reason'), 'e.g. Amount does not match / slip not found');
                 if (reason) await act('reject', () => staffApi(`/payments/verifications/${openVerification.id}/reject`, { body: { reason } }), 'Payment rejected');
               }}
             >
@@ -133,32 +134,32 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
         )}
         {open && !paid && (
           <Button variant="outline" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setManual(true)}>
-            Manual approval
+            {tt('Manual approval')}
           </Button>
         )}
         {paid && ['PAID', 'CONFIRMED', 'NEW', 'PREPARING', 'READY'].includes(o.status) && can('orders.manage') && (
           <Button variant="primary" icon={<PackageCheck className="h-4 w-4" />} loading={busy === 'complete'} onClick={() => act('complete', () => staffApi(`/orders/${id}/complete`, { method: 'POST' }), 'Order completed')}>
-            Picked up / Complete
+            {tt('Picked up / Complete')}
           </Button>
         )}
         {paid && open && can('queue.manage') && (
           <Button variant="outline" icon={<BellRing className="h-4 w-4" />} onClick={() => act('call', () => staffApi(`/orders/${id}/call`, { method: 'POST' }), 'Number called')}>
-            Call again
+            {tt('Call again')}
           </Button>
         )}
         {paid && (
           <>
-            <Button variant="outline" icon={<Printer className="h-4 w-4" />} onClick={() => act('rr', () => withManagerApproval('Reprint receipt', (a) => staffApi(`/orders/${id}/reprint`, { body: { kind: 'RECEIPT', ...a } })), 'Receipt reprint queued')}>
-              Reprint receipt
+            <Button variant="outline" icon={<Printer className="h-4 w-4" />} onClick={() => act('rr', () => withManagerApproval(tt('Reprint receipt'), (a) => staffApi(`/orders/${id}/reprint`, { body: { kind: 'RECEIPT', ...a } })), 'Receipt reprint queued')}>
+              {tt('Reprint receipt')}
             </Button>
-            <Button variant="outline" icon={<Printer className="h-4 w-4" />} onClick={() => act('rk', () => withManagerApproval('Reprint kitchen ticket', (a) => staffApi(`/orders/${id}/reprint`, { body: { kind: 'KITCHEN_TICKET', ...a } })), 'Kitchen reprint queued')}>
-              Reprint kitchen
+            <Button variant="outline" icon={<Printer className="h-4 w-4" />} onClick={() => act('rk', () => withManagerApproval(tt('Reprint kitchen ticket'), (a) => staffApi(`/orders/${id}/reprint`, { body: { kind: 'KITCHEN_TICKET', ...a } })), 'Kitchen reprint queued')}>
+              {tt('Reprint kitchen')}
             </Button>
           </>
         )}
         {paid && (
           <Button variant="outline" icon={<Undo2 className="h-4 w-4" />} onClick={() => setRefund(true)}>
-            Refund
+            {tt('Refund')}
           </Button>
         )}
         {open && (
@@ -172,7 +173,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
               await act('cancel', () => withManagerApproval(paid ? 'Void paid order' : 'Cancel order', (a) => staffApi(`/orders/${id}/${paid ? 'void' : 'cancel'}`, { body: { reason, ...a } })), paid ? 'Order voided' : 'Order cancelled');
             }}
           >
-            {paid ? 'Void' : 'Cancel'}
+            {paid ? 'Void' : tt('Cancel')}
           </Button>
         )}
       </div>
@@ -180,7 +181,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
       <div className={clsx('grid gap-5', !compact && 'lg:grid-cols-2')}>
         <div className="space-y-5">
           <section>
-            <h3 className="mb-2 font-semibold text-slate-800">Items</h3>
+            <h3 className="mb-2 font-semibold text-slate-800">{tt('Items')}</h3>
             <div className="divide-y rounded-xl border">
               {d.items.map((i: any) => (
                 <div key={i.id} className="flex gap-3 p-3">
@@ -217,8 +218,8 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
           </section>
 
           <section>
-            <h3 className="mb-2 font-semibold text-slate-800">Payments</h3>
-            {d.payments.length === 0 && <div className="text-sm text-slate-500">No payment yet</div>}
+            <h3 className="mb-2 font-semibold text-slate-800">{tt('Payments')}</h3>
+            {d.payments.length === 0 && <div className="text-sm text-slate-500">{tt('No payment yet')}</div>}
             {d.payments.map((p: any) => (
               <div key={p.id} className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-sm">
                 <div>
@@ -252,7 +253,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
                     <ZoomIn className="absolute right-0 bottom-0 h-4 w-4 rounded bg-white" />
                   </button>
                 ) : (
-                  <div className="flex h-16 w-12 items-center justify-center rounded bg-slate-100 text-[10px] text-slate-400">no slip</div>
+                  <div className="flex h-16 w-12 items-center justify-center rounded bg-slate-100 text-[10px] text-slate-400">{tt('no slip')}</div>
                 )}
                 <div className="flex-1">
                   <div>Verification · expected {money(v.expected_amount)}</div>
@@ -276,8 +277,8 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
           </section>
 
           <section>
-            <h3 className="mb-2 font-semibold text-slate-800">Print jobs</h3>
-            {d.prints.length === 0 && <div className="text-sm text-slate-500">No print jobs</div>}
+            <h3 className="mb-2 font-semibold text-slate-800">{tt('Print jobs')}</h3>
+            {d.prints.length === 0 && <div className="text-sm text-slate-500">{tt('No print jobs')}</div>}
             {d.prints.map((j: any) => (
               <div key={j.id} className="mb-1.5 flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
                 <span>
@@ -288,7 +289,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
                   <StatusBadge status={j.status} />
                   {['FAILED', 'RETRYING', 'CANCELLED'].includes(j.status) && (
                     <Button size="sm" variant="outline" icon={<RotateCcw className="h-3.5 w-3.5" />} onClick={() => act('retry', () => staffApi(`/print/jobs/${j.id}/retry`, { method: 'POST' }), 'Retry queued')}>
-                      Retry
+                      {tt('Retry')}
                     </Button>
                   )}
                 </span>
@@ -298,7 +299,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
         </div>
 
         <section>
-          <h3 className="mb-2 font-semibold text-slate-800">Timeline</h3>
+          <h3 className="mb-2 font-semibold text-slate-800">{tt('Timeline')}</h3>
           <ol className="relative ml-2 border-l-2 border-slate-200">
             {d.events.map((e: any) => (
               <li key={e.id} className="mb-3 ml-4">
@@ -321,7 +322,7 @@ export function OrderDetail({ id, compact = false }: { id: string; compact?: boo
       {cash && <CashDialog order={o} onClose={() => setCash(false)} onDone={refresh} />}
       {refund && <RefundDialog order={o} onClose={() => setRefund(false)} onDone={refresh} />}
       {manual && <ManualApproveDialog order={o} onClose={() => setManual(false)} onDone={refresh} />}
-      <Modal open={!!slip} onClose={() => setSlip(null)} title="Payment slip" size="lg">
+      <Modal open={!!slip} onClose={() => setSlip(null)} title={tt('Payment slip')} size="lg">
         {slip && <img src={slip} alt="slip" className="mx-auto max-h-[75vh] rounded-xl" />}
       </Modal>
     </div>
@@ -352,9 +353,9 @@ function RefundDialog({ order, onClose, onDone }: { order: any; onClose: () => v
   const submit = async () => {
     setBusy(true);
     try {
-      const r = await withManagerApproval('Refund', (a) => staffApi(`/orders/${order.id}/refund`, { body: { amount, reason, ...a }, idempotencyKey: `refund-${order.id}-${amount}-${reason}` }));
+      const r = await withManagerApproval(tt('Refund'), (a) => staffApi(`/orders/${order.id}/refund`, { body: { amount, reason, ...a }, idempotencyKey: `refund-${order.id}-${amount}-${reason}` }));
       if (r) {
-        toast.success('Refund recorded');
+        toast.success(tt('Refund recorded'));
         onDone();
         onClose();
       }
@@ -365,13 +366,13 @@ function RefundDialog({ order, onClose, onDone }: { order: any; onClose: () => v
     }
   };
   return (
-    <Modal open onClose={onClose} title={`Refund #${order.order_number}`} size="sm" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="danger" loading={busy} disabled={!amount || amount > max || !reason} onClick={submit}>Refund {money(amount ?? 0)}</Button></>}>
+    <Modal open onClose={onClose} title={`Refund #${order.order_number}`} size="sm" footer={<><Button variant="ghost" onClick={onClose}>{tt('Cancel')}</Button><Button variant="danger" loading={busy} disabled={!amount || amount > max || !reason} onClick={submit}>Refund {money(amount ?? 0)}</Button></>}>
       <div className="space-y-3">
         <Field label={`Amount (max ${money(max)})`}>
           <NumberInput value={amount} onChange={setAmount} min={0} max={max} step="0.01" />
         </Field>
-        <Field label="Reason">
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Customer complaint / wrong item…" />
+        <Field label={tt('Reason')}>
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tt('Customer complaint / wrong item…')} />
         </Field>
       </div>
     </Modal>
@@ -383,12 +384,12 @@ function ManualApproveDialog({ order, onClose, onDone }: { order: any; onClose: 
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
   const submit = async () => {
-    if (!(await confirmDialog('Confirm manual payment approval', `Mark #${order.order_number} (${money(order.total)}) as PAID via ${method}? This is logged with your name.`))) return;
+    if (!(await confirmDialog(tt('Confirm manual payment approval'), `Mark #${order.order_number} (${money(order.total)}) as PAID via ${method}? This is logged with your name.`))) return;
     setBusy(true);
     try {
-      const r = await withManagerApproval('Manual payment approval', (a) => staffApi(`/orders/${order.id}/manual-payment`, { body: { method, reference: reference || null, ...a }, idempotencyKey: `manual-${order.id}` }));
+      const r = await withManagerApproval(tt('Manual payment approval'), (a) => staffApi(`/orders/${order.id}/manual-payment`, { body: { method, reference: reference || null, ...a }, idempotencyKey: `manual-${order.id}` }));
       if (r) {
-        toast.success('Payment approved');
+        toast.success(tt('Payment approved'));
         onDone();
         onClose();
       }
@@ -399,18 +400,18 @@ function ManualApproveDialog({ order, onClose, onDone }: { order: any; onClose: 
     }
   };
   return (
-    <Modal open onClose={onClose} title="Manual payment approval" size="sm" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="success" loading={busy} onClick={submit}>Approve {money(order.total)}</Button></>}>
+    <Modal open onClose={onClose} title={tt('Manual payment approval')} size="sm" footer={<><Button variant="ghost" onClick={onClose}>{tt('Cancel')}</Button><Button variant="success" loading={busy} onClick={submit}>Approve {money(order.total)}</Button></>}>
       <div className="space-y-3">
-        <p className="text-sm text-slate-600">Use when payment was verified outside the system (e.g. offline EDC terminal, voucher). Requires manager approval if configured.</p>
-        <Field label="Method">
+        <p className="text-sm text-slate-600">{tt('Use when payment was verified outside the system (e.g. offline EDC terminal, voucher). Requires manager approval if configured.')}</p>
+        <Field label={tt('Method')}>
           <Select value={method} onChange={(e) => setMethod(e.target.value as any)}>
-            <option value="QR">QR / Transfer</option>
-            <option value="CARD">Card (EDC)</option>
-            <option value="CASH">Cash</option>
-            <option value="OTHER">Other</option>
+            <option value="QR">{tt('QR / Transfer')}</option>
+            <option value="CARD">{tt('Card (EDC)')}</option>
+            <option value="CASH">{tt('Cash')}</option>
+            <option value="OTHER">{tt('Other')}</option>
           </Select>
         </Field>
-        <Field label="Reference (slip ref / approval code)">
+        <Field label={tt('Reference (slip ref / approval code)')}>
           <Input value={reference} onChange={(e) => setReference(e.target.value)} />
         </Field>
       </div>

@@ -7,6 +7,7 @@ import { tr } from '@kiosk/shared';
 import { staffApi, errorMessage } from '../lib/api';
 import { dateTime, money, time, elapsed } from '../lib/format';
 import { Button, Empty, Field, Input, Loading, NumberInput, StatusBadge, Tabs, promptDialog, toast } from '../components/ui';
+import { tt } from '../lib/legacy-i18n';
 
 /** Slip Verification Center: queue on the left, order + slip + big APPROVE / REJECT on the right. */
 export function VerificationCenter() {
@@ -45,7 +46,7 @@ export function VerificationCenter() {
     }
   };
   const reject = async () => {
-    const reason = await promptDialog('Reason for rejection', 'e.g. Transfer not received / amount mismatch');
+    const reason = await promptDialog(tt('Reason for rejection'), 'e.g. Transfer not received / amount mismatch');
     if (!reason) return;
     setBusy('reject');
     try {
@@ -70,7 +71,7 @@ export function VerificationCenter() {
         </div>
         <div className="scroll-thin flex-1 overflow-y-auto">
           {list.isLoading && <Loading />}
-          {list.data?.length === 0 && <Empty title="No pending verifications" sub="New requests pop up here in real time." />}
+          {list.data?.length === 0 && <Empty title={tt('No pending verifications')} sub={tt('New requests pop up here in real time.')} />}
           {list.data?.map((x) => (
             <button key={x.id} onClick={() => nav(`/cashier/verify/${x.id}`)} className={clsx('flex w-full items-center gap-3 border-b px-4 py-3 text-left hover:bg-slate-50', current === x.id && 'bg-primary/5 ring-2 ring-primary ring-inset')}>
               <div className="flex-1">
@@ -81,7 +82,7 @@ export function VerificationCenter() {
               </div>
               <div className="text-right">
                 <div className="font-bold">{money(x.total)}</div>
-                {x.status !== 'WAITING_VERIFICATION' ? <StatusBadge status={x.status} /> : x.slip_url ? <span className="text-xs text-emerald-600">slip ✓</span> : <span className="text-xs text-slate-400">no slip</span>}
+                {x.status !== 'WAITING_VERIFICATION' ? <StatusBadge status={x.status} /> : x.slip_url ? <span className="text-xs text-emerald-600">{tt('slip ✓')}</span> : <span className="text-xs text-slate-400">{tt('no slip')}</span>}
               </div>
             </button>
           ))}
@@ -89,7 +90,7 @@ export function VerificationCenter() {
       </aside>
       <section className="scroll-thin min-w-0 flex-1 overflow-y-auto p-6">
         {!current ? (
-          <Empty title="Select a request" />
+          <Empty title={tt('Select a request')} />
         ) : detail.isLoading || !d ? (
           <Loading />
         ) : (
@@ -97,22 +98,22 @@ export function VerificationCenter() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm">
                 <div>
-                  <div className="text-sm text-slate-500">Order</div>
+                  <div className="text-sm text-slate-500">{tt('Order')}</div>
                   <div className="text-5xl font-black tracking-wider">#{d.order.order_number}</div>
                   <div className="mt-1 text-sm text-slate-500">
-                    {d.order.kiosk_code ?? 'POS'} · {d.order.order_type === 'DINE_IN' ? 'Dine in' : 'Take away'} · ordered {dateTime(d.order.created_at)}
+                    {d.order.kiosk_code ?? 'POS'} · {d.order.order_type === 'DINE_IN' ? tt('Dine in') : tt('Take away')} · ordered {dateTime(d.order.created_at)}
                   </div>
                 </div>
                 <StatusBadge status={v.status} className="text-sm" />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <Info label="Expected amount" value={money(v.expected_amount)} big />
-                <Info label="Payment method" value={`QR / Transfer (${d.payments.find((p: any) => p.id === v.payment_id)?.provider ?? ''})`} />
-                <Info label="Requested at" value={dateTime(v.requested_at)} />
-                <Info label="Customer reference" value={v.customer_reference || '—'} />
+                <Info label={tt('Expected amount')} value={money(v.expected_amount)} big />
+                <Info label={tt('Payment method')} value={`QR / Transfer (${d.payments.find((p: any) => p.id === v.payment_id)?.provider ?? ''})`} />
+                <Info label={tt('Requested at')} value={dateTime(v.requested_at)} />
+                <Info label={tt('Customer reference')} value={v.customer_reference || '—'} />
               </div>
               <div className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="mb-2 font-semibold">Items</div>
+                <div className="mb-2 font-semibold">{tt('Items')}</div>
                 {d.items.map((i: any) => (
                   <div key={i.id} className="flex justify-between border-b py-1.5 text-sm last:border-0">
                     <span>
@@ -123,18 +124,18 @@ export function VerificationCenter() {
                   </div>
                 ))}
                 <div className="mt-2 flex justify-between font-bold">
-                  <span>Order total</span>
+                  <span>{tt('Order total')}</span>
                   <span>{money(d.order.total)}</span>
                 </div>
               </div>
               {v.status === 'WAITING_VERIFICATION' && (
                 <div className="rounded-2xl bg-white p-5 shadow-sm">
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="Paid amount (from bank app / slip)" error={mismatch ? 'Differs from expected amount' : null}>
+                    <Field label={tt('Paid amount (from bank app / slip)')} error={mismatch ? 'Differs from expected amount' : null}>
                       <NumberInput value={paidAmount} onChange={setPaidAmount} step="0.01" />
                     </Field>
-                    <Field label="Note (optional)">
-                      <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Bank ref / last 4 digits" />
+                    <Field label={tt('Note (optional)')}>
+                      <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tt('Bank ref / last 4 digits')} />
                     </Field>
                   </div>
                   <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -154,7 +155,7 @@ export function VerificationCenter() {
               )}
             </div>
             <div className="rounded-2xl bg-white p-4 shadow-sm">
-              <div className="mb-2 font-semibold">Payment slip</div>
+              <div className="mb-2 font-semibold">{tt('Payment slip')}</div>
               {v.slip_url ? (
                 <a href={v.slip_url} target="_blank" rel="noreferrer">
                   <img src={v.slip_url} alt="slip" className="w-full rounded-xl border" />

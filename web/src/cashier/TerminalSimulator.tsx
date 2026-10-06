@@ -6,6 +6,7 @@ import { useSocketEvent } from '../lib/socket';
 import { money, time } from '../lib/format';
 import { useStaffRt } from '../components/StaffShell';
 import { Button, Card, Empty, Loading, StatusBadge, toast } from '../components/ui';
+import { tt } from '../lib/legacy-i18n';
 
 /**
  * Sandbox card terminal / payment gateway simulator. Each button produces a properly
@@ -28,9 +29,9 @@ export function TerminalSimulator() {
   };
   return (
     <div className="scroll-thin h-full overflow-y-auto p-5">
-      <Card title={<span className="flex items-center gap-2"><CreditCard className="h-5 w-5" /> Sandbox card terminal / gateway</span>}>
-        <p className="mb-4 text-sm text-slate-500">Payments waiting on the card terminal or payment gateway appear here. Use the buttons to simulate the terminal result (signed webhook).</p>
-        {q.isLoading ? <Loading /> : !q.data?.length ? <Empty title="No pending terminal payments" /> : (
+      <Card title={<span className="flex items-center gap-2"><CreditCard className="h-5 w-5" /> {tt('Sandbox card terminal / gateway')}</span>}>
+        <p className="mb-4 text-sm text-slate-500">{tt('Payments waiting on the card terminal or payment gateway appear here. Use the buttons to simulate the terminal result (signed webhook).')}</p>
+        {q.isLoading ? <Loading /> : !q.data?.length ? <Empty title={tt('No pending terminal payments')} /> : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {q.data.map((p) => (
               <div key={p.id} className="rounded-2xl border p-4">
@@ -41,10 +42,10 @@ export function TerminalSimulator() {
                 <div className="text-3xl font-bold text-primary">{money(p.amount)}</div>
                 <div className="text-xs text-slate-500">{p.method} · {p.kiosk_code ?? 'POS'} · {time(p.created_at)}</div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <Button size="sm" variant="outline" icon={<Loader2 className="h-4 w-4" />} onClick={() => sim(p.id, 'processing')}>Processing</Button>
-                  <Button size="sm" variant="success" icon={<Check className="h-4 w-4" />} onClick={() => sim(p.id, 'succeeded')}>Approve</Button>
-                  <Button size="sm" variant="danger" icon={<X className="h-4 w-4" />} onClick={() => sim(p.id, 'failed')}>Decline</Button>
-                  <Button size="sm" variant="ghost" onClick={() => sim(p.id, 'cancelled')}>Cancel</Button>
+                  <Button size="sm" variant="outline" icon={<Loader2 className="h-4 w-4" />} onClick={() => sim(p.id, 'processing')}>{tt('Processing')}</Button>
+                  <Button size="sm" variant="success" icon={<Check className="h-4 w-4" />} onClick={() => sim(p.id, 'succeeded')}>{tt('Approve')}</Button>
+                  <Button size="sm" variant="danger" icon={<X className="h-4 w-4" />} onClick={() => sim(p.id, 'failed')}>{tt('Decline')}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => sim(p.id, 'cancelled')}>{tt('Cancel')}</Button>
                 </div>
               </div>
             ))}

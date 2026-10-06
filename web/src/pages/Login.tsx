@@ -5,8 +5,22 @@ import { Delete, KeyRound, Hash } from 'lucide-react';
 import { errorMessage } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { Button, Field, Input } from '../components/ui';
+import { LangSwitcher, defineStrings, useT } from '../lib/lang';
+
+const LS = defineStrings('login', {
+  title: { th: 'เข้าสู่ระบบพนักงาน', en: 'Staff sign in', zh: '员工登录' },
+  sub: { th: 'ใช้รหัสพนักงาน + PIN หรือชื่อผู้ใช้ + รหัสผ่าน', en: 'Employee code + PIN, or username + password', zh: '员工编号 + PIN，或用户名 + 密码' },
+  pinMode: { th: 'รหัสพนักงาน + PIN', en: 'Employee code + PIN', zh: '员工编号 + PIN' },
+  pwMode: { th: 'ชื่อผู้ใช้ + รหัสผ่าน', en: 'Username + password', zh: '用户名 + 密码' },
+  code: { th: 'รหัสพนักงาน', en: 'Employee code', zh: '员工编号' },
+  username: { th: 'ชื่อผู้ใช้', en: 'Username', zh: '用户名' },
+  password: { th: 'รหัสผ่าน', en: 'Password', zh: '密码' },
+  clear: { th: 'ล้าง', en: 'Clear', zh: '清除' },
+  signIn: { th: 'เข้าสู่ระบบ', en: 'Sign in', zh: '登录' },
+});
 
 export default function Login() {
+  const t = useT(LS);
   const { login, user } = useAuth();
   const [params] = useSearchParams();
   const next = params.get('next') || '/admin';
@@ -41,21 +55,22 @@ export default function Login() {
         <div className="mb-6 flex items-center gap-3">
           <img src="/icon.svg" className="h-12 w-12" alt="" />
           <div>
-            <h1 className="text-2xl font-bold">Staff sign in</h1>
-            <p className="text-sm text-slate-500">เข้าสู่ระบบพนักงาน</p>
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
+            <p className="text-sm text-slate-500">{t('sub')}</p>
           </div>
+          <LangSwitcher compact className="ml-auto self-start" />
         </div>
         <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
           {(['pin', 'password'] as const).map((m) => (
             <button key={m} onClick={() => setMode(m)} className={clsx('flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium', mode === m ? 'bg-white shadow' : 'text-slate-600')}>
               {m === 'pin' ? <Hash className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
-              {m === 'pin' ? 'Employee code + PIN' : 'Username + password'}
+              {m === 'pin' ? t('pinMode') : t('pwMode')}
             </button>
           ))}
         </div>
         {mode === 'pin' ? (
           <form onSubmit={(e) => { e.preventDefault(); void submit({ employeeCode: code.toUpperCase(), pin }); }}>
-            <Field label="Employee code">
+            <Field label={t('code')}>
               <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="CSH001" autoFocus autoCapitalize="characters" />
             </Field>
             <div className="mt-4 mb-3 flex justify-center gap-3">
@@ -70,7 +85,7 @@ export default function Login() {
                 </button>
               ))}
               <button type="button" onClick={() => setPin('')} className="press h-14 rounded-xl bg-slate-100 text-sm font-medium">
-                Clear
+                {t('clear')}
               </button>
               <button type="button" onClick={() => press('0')} className="press h-14 rounded-xl bg-slate-100 text-2xl font-semibold">
                 0
@@ -81,20 +96,20 @@ export default function Login() {
             </div>
             {err && <div className="mt-4 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{err}</div>}
             <Button type="submit" className="mt-5 w-full" size="lg" loading={busy} disabled={!code || pin.length < 4}>
-              Sign in
+              {t('signIn')}
             </Button>
           </form>
         ) : (
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void submit({ username, password }); }}>
-            <Field label="Username">
+            <Field label={t('username')}>
               <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" />
             </Field>
-            <Field label="Password">
+            <Field label={t('password')}>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
             </Field>
             {err && <div className="rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">{err}</div>}
             <Button type="submit" className="w-full" size="lg" loading={busy} disabled={!username || !password}>
-              Sign in
+              {t('signIn')}
             </Button>
           </form>
         )}

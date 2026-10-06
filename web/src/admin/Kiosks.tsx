@@ -5,6 +5,7 @@ import { staffApi, errorMessage } from '../lib/api';
 import { dateTime } from '../lib/format';
 import { Badge, Button, Card, Checkbox, Empty, Field, Input, Loading, Modal, NumberInput, PageHeader, Select, StatusBadge, Table, Td, Toggle, confirmDialog, toast } from '../components/ui';
 import { useCrud, useList } from './hooks';
+import { tt } from '../lib/legacy-i18n';
 
 const blank = { code: '', name: '', default_language: 'th', receipt_printer_id: '', idle_timeout: 60, payment_methods: ['QR', 'CASH', 'CARD'], order_types: ['DINE_IN', 'TAKE_AWAY'], theme: {}, is_active: true };
 
@@ -19,7 +20,7 @@ export default function Kiosks() {
   };
   return (
     <div>
-      <PageHeader title="Kiosks" sub="KIOSK-01, KIOSK-02 … each with its own branch, language, printer, theme, idle timeout and payment methods" actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => setEdit({ ...blank, code: `KIOSK-${String((list.data?.length ?? 0) + 1).padStart(2, '0')}` })}>New kiosk</Button>} />
+      <PageHeader title={tt('Kiosks')} sub={tt('KIOSK-01, KIOSK-02 … each with its own branch, language, printer, theme, idle timeout and payment methods')} actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => setEdit({ ...blank, code: `KIOSK-${String((list.data?.length ?? 0) + 1).padStart(2, '0')}` })}>{tt('New kiosk')}</Button>} />
       <Card>
         {list.isLoading ? <Loading /> : !list.data?.length ? <Empty /> : (
           <Table head={['Kiosk', 'Status', 'Last seen', 'Version', 'Language', 'Idle', 'Payments', 'Receipt printer', 'Orders today', '']}>
@@ -35,10 +36,10 @@ export default function Kiosks() {
                 <Td>{k.receipt_printer_name ?? 'Default'}</Td>
                 <Td>{k.orders_today}</Td>
                 <Td className="text-right whitespace-nowrap">
-                  <Button size="sm" variant="outline" onClick={() => setEdit({ ...k, receipt_printer_id: k.receipt_printer_id ?? '' })}>Edit</Button>
-                  <Button size="sm" variant="ghost" title="New pairing token" onClick={async () => { if (!(await confirmDialog('Issue a new token?', 'The current kiosk device will be logged out and must be paired again.'))) return; try { const r = await staffApi<any>(`/devices/kiosks/${k.id}/token`, { method: 'POST' }); await showToken(k.code, r.token); } catch (e) { toast.error(errorMessage(e)); } }}><KeyRound className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="ghost" title="Reload kiosk" onClick={() => staffApi(`/devices/kiosks/${k.id}/reload`, { method: 'POST' }).then(() => toast.success('Reload sent'))}><RefreshCw className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await confirmDialog('Delete kiosk?', undefined, true)) && crud.remove(k.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => setEdit({ ...k, receipt_printer_id: k.receipt_printer_id ?? '' })}>{tt('Edit')}</Button>
+                  <Button size="sm" variant="ghost" title={tt('New pairing token')} onClick={async () => { if (!(await confirmDialog(tt('Issue a new token?'), 'The current kiosk device will be logged out and must be paired again.'))) return; try { const r = await staffApi<any>(`/devices/kiosks/${k.id}/token`, { method: 'POST' }); await showToken(k.code, r.token); } catch (e) { toast.error(errorMessage(e)); } }}><KeyRound className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="ghost" title={tt('Reload kiosk')} onClick={() => staffApi(`/devices/kiosks/${k.id}/reload`, { method: 'POST' }).then(() => toast.success(tt('Reload sent')))}><RefreshCw className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await confirmDialog(tt('Delete kiosk?'), undefined, true)) && crud.remove(k.id)}><Trash2 className="h-4 w-4" /></Button>
                 </Td>
               </tr>
             ))}
@@ -47,7 +48,7 @@ export default function Kiosks() {
       </Card>
       {edit && <KioskEditor value={edit} onClose={() => setEdit(null)} onSaved={async (r: any) => { setEdit(null); if (r?.token) await showToken(edit.code, r.token); }} save={crud.save} />}
       <Modal open={!!token} onClose={() => setToken(null)} title={`Pair ${token?.code}`} size="md">
-        <p className="text-sm text-slate-600">Open <b>/kiosk</b> on the kiosk device and paste this token, or scan the QR code with the device. The token is shown only once.</p>
+        <p className="text-sm text-slate-600">{tt('Open')} <b>/kiosk</b> on the kiosk device and paste this token, or scan the QR code with the device. The token is shown only once.</p>
         {token?.qr && <img src={token.qr} alt="pairing QR" className="mx-auto my-4" />}
         <Input readOnly value={token?.token ?? ''} className="font-mono text-xs" onFocus={(e) => e.target.select()} />
       </Modal>
@@ -67,29 +68,29 @@ function KioskEditor({ value, onClose, onSaved, save }: { value: any; onClose: (
     } catch { /* toast */ }
   };
   return (
-    <Modal open onClose={onClose} title={k.id ? `Edit ${k.code}` : 'New kiosk'} size="md" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={!k.code || !k.name || !k.order_types.length}>Save</Button></>}>
+    <Modal open onClose={onClose} title={k.id ? `Edit ${k.code}` : 'New kiosk'} size="md" footer={<><Button variant="ghost" onClick={onClose}>{tt('Cancel')}</Button><Button onClick={submit} disabled={!k.code || !k.name || !k.order_types.length}>{tt('Save')}</Button></>}>
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Code"><Input value={k.code} onChange={(e) => set('code', e.target.value.toUpperCase())} /></Field>
-        <Field label="Name"><Input value={k.name} onChange={(e) => set('name', e.target.value)} /></Field>
-        <Field label="Default language"><Select value={k.default_language} onChange={(e) => set('default_language', e.target.value)}><option value="th">ไทย</option><option value="en">English</option><option value="zh">中文</option></Select></Field>
-        <Field label="Idle timeout"><Select value={k.idle_timeout} onChange={(e) => set('idle_timeout', Number(e.target.value))}>{[30, 60, 90, 120, 180, 300].map((s) => <option key={s} value={s}>{s} seconds</option>)}</Select></Field>
-        <Field label="Receipt printer" className="md:col-span-2">
+        <Field label={tt('Code')}><Input value={k.code} onChange={(e) => set('code', e.target.value.toUpperCase())} /></Field>
+        <Field label={tt('Name')}><Input value={k.name} onChange={(e) => set('name', e.target.value)} /></Field>
+        <Field label={tt('Default language')}><Select value={k.default_language} onChange={(e) => set('default_language', e.target.value)}><option value="th">ไทย</option><option value="en">{tt('English')}</option><option value="zh">中文</option></Select></Field>
+        <Field label={tt('Idle timeout')}><Select value={k.idle_timeout} onChange={(e) => set('idle_timeout', Number(e.target.value))}>{[30, 60, 90, 120, 180, 300].map((s) => <option key={s} value={s}>{s} seconds</option>)}</Select></Field>
+        <Field label={tt('Receipt printer')} className="md:col-span-2">
           <Select value={k.receipt_printer_id} onChange={(e) => set('receipt_printer_id', e.target.value)}>
-            <option value="">Branch default receipt printer</option>
+            <option value="">{tt('Branch default receipt printer')}</option>
             {printers.data?.filter((p: any) => p.type === 'RECEIPT').map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
         </Field>
-        <Field label="Payment methods"><div className="flex flex-wrap gap-3">{['QR', 'CASH', 'CARD', 'OTHER'].map((m) => <Checkbox key={m} checked={k.payment_methods.includes(m)} onChange={() => toggleIn('payment_methods', m)} label={m} />)}</div></Field>
-        <Field label="Order types"><div className="flex gap-3">{['DINE_IN', 'TAKE_AWAY'].map((m) => <Checkbox key={m} checked={k.order_types.includes(m)} onChange={() => toggleIn('order_types', m)} label={m.replace('_', ' ')} />)}</div></Field>
-        <Field label="Theme override — primary color" hint="Leave empty to use the global theme">
+        <Field label={tt('Payment methods')}><div className="flex flex-wrap gap-3">{['QR', 'CASH', 'CARD', 'OTHER'].map((m) => <Checkbox key={m} checked={k.payment_methods.includes(m)} onChange={() => toggleIn('payment_methods', m)} label={m} />)}</div></Field>
+        <Field label={tt('Order types')}><div className="flex gap-3">{['DINE_IN', 'TAKE_AWAY'].map((m) => <Checkbox key={m} checked={k.order_types.includes(m)} onChange={() => toggleIn('order_types', m)} label={m.replace('_', ' ')} />)}</div></Field>
+        <Field label={tt('Theme override — primary color')} hint={tt('Leave empty to use the global theme')}>
           <Input type="color" value={k.theme?.primary ?? '#E4572E'} onChange={(e) => set('theme', { ...k.theme, primary: e.target.value, buttonColor: e.target.value })} className="h-10 p-1" />
         </Field>
         <div className="flex items-end gap-3 pb-2">
-          <Toggle checked={k.is_active} onChange={(v) => set('is_active', v)} label="Active" />
-          {k.theme?.primary && <Button size="sm" variant="ghost" onClick={() => set('theme', {})}>Reset theme</Button>}
+          <Toggle checked={k.is_active} onChange={(v) => set('is_active', v)} label={tt('Active')} />
+          {k.theme?.primary && <Button size="sm" variant="ghost" onClick={() => set('theme', {})}>{tt('Reset theme')}</Button>}
         </div>
       </div>
-      {!k.id && <p className="mt-3 text-xs text-slate-500">A pairing token is generated after saving.</p>}
+      {!k.id && <p className="mt-3 text-xs text-slate-500">{tt('A pairing token is generated after saving.')}</p>}
     </Modal>
   );
 }

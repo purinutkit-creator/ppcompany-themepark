@@ -1,9 +1,31 @@
-# Krua Hub — Self-Ordering Kiosk · POS Cashier · KDS · Queue Display · Admin
+# PP Park — Theme Park · Family Entertainment Center · Restaurant POS
 
-ระบบสั่งอาหารด้วยตนเอง (Self-Ordering Kiosk) + แคชเชียร์/ตรวจสอบการชำระเงิน + จอครัว (KDS) + จอเรียกคิว + ระบบหลังร้าน
-แบบ Full-Stack ที่ทำงานจริง: Backend + PostgreSQL + Real-time + Printer Integration Layer + Offline mode + Multi-kiosk / Multi-branch
+**ONE QR — ONE EXPERIENCE.** ระบบสวนสนุก / Indoor Playground / Family Entertainment Center แบบ Full-Stack:
+จองและชำระเงินออนไลน์ · เคาน์เตอร์ขายบัตร (Split payment, ผูกริสแบนด์) · สมาชิก/ระดับ/แต้ม/รางวัล · โปรโมชั่น/คูปอง ·
+ประตูทางเข้า 10 ช่อง (AUTO/MANUAL, anti-passback, emergency) · เครื่องเล่น + สิทธิ์ + ซื้อที่จุดสแกน · Virtual queue ·
+Wallet · POS ร้านค้า/ร้านอาหาร/ล็อกเกอร์ · KDS · คีออสลูกค้า · พนักงาน/สิทธิ์/PIN ผู้จัดการ/กะ · รายงาน PDF/Excel/CSV ·
+หลายสาขา · ออฟไลน์ · พิมพ์ใบเสร็จ 2 ใบ (พนักงาน + ลูกค้า) ผ่าน Bluetooth / LAN / Wi-Fi ·
+**ทุกหน้าจอเปลี่ยนภาษาได้ ไทย / English / 中文** และ **ตั้งฟอนต์แยกตามส่วนและตามภาษา** (Google Fonts หรืออัปโหลดเอง — ใช้ทั้งหน้าเว็บและใบเสร็จ)
 
-> Brand, logo, colors and UI are original ("Krua Hub" design system) — no third-party branding is used.
+> Brand, logo, colors and artwork are original — no third-party branding is used.
+
+### Park surfaces
+
+| Surface | URL | Who |
+|---|---|---|
+| Public site: book tickets, live occupancy, my bookings | `/park`, `/park/book`, `/park/live`, `/park/booking/:no`, `/park/bookings` | customers |
+| Member portal: digital card (dynamic QR), tickets, wallet, rewards, queue, food ordering | `/member` | members |
+| Park self-service kiosk: buy / top-up / card check / virtual queue | `/park-kiosk` | customers (paired device) |
+| Locker station | `/locker` | customers (paired device) |
+| Ticket counter: sell, split pay, bookings, bind wristband, verify slips, cards | `/counter` | ticket cashier |
+| Store POS: retail / restaurant / locker | `/pos` | POS cashier |
+| Gate customer display (one per lane) | `/gate/:gateId` | entrance screen |
+| Gate operator console (all lanes, AUTO/MANUAL, emergency) | `/gates` | gate operator |
+| Ride scanner (entitlement check, buy-at-scanner) | `/ride/:scanPointId` | ride entrance |
+| Ride operator (queue, cycles, maintenance) | `/rides` | ride operator |
+| Park admin: dashboard, live map, catalogue, members, transactions, reports, settings | `/admin/park/*` | owner / manager |
+
+### Restaurant surfaces
 
 | Surface | URL | Who |
 |---|---|---|
@@ -12,7 +34,7 @@
 | Cashier / POS + Slip Verification Center | `/cashier`, `/cashier/verify` | cashier |
 | Kitchen Display (all / per station) | `/kds`, `/kds/:stationId` | kitchen |
 | Customer queue display (TV) | `/queue/:branchCode` | public screen |
-| Admin back office | `/admin` | owner / admin / manager |
+| Restaurant back office | `/admin/restaurant` and the *Stores & food* menu | owner / admin / manager |
 | Receipt QR order lookup | `/o/:orderId` | customer phone |
 
 ## Quick start (local)
@@ -36,6 +58,14 @@ Demo logins (change them in Admin → Staff):
 | Manager | `manager` / `manager1234` | `MGR001` / `2222` |
 | Cashier | `cashier` / `cashier1234` | `CSH001` / `1111` |
 | Kitchen | `kitchen` / `kitchen1234` | `KIT001` / `3333` |
+| Gate operator | — | `GATE001` / `4444` |
+| Ride operator | — | `RIDE001` / `5555` |
+| Ticket cashier | — | `TKT001` / `6666` |
+| POS cashier | — | `POS001` / `7777` |
+
+Demo members (`/member`, password `member1234`): `0811111111` (Gold, wallet ฿1,250, card `CARD-00001001`)
+and `0822222222` (birthday this month). Gate / ride / counter / POS / locker / edge device tokens are in
+`server/.seed-output.json` → `parkDeviceTokens` (or Admin → Park → Devices → token).
 
 **Pair a kiosk:** the seed prints a token per kiosk (also in `server/.seed-output.json`).
 Open `/kiosk` and paste it, or in Admin → Kiosks click 🔑 to get a QR code for the device.
@@ -81,8 +111,11 @@ packages/shared   Types, pricing engine, promotions, PromptPay EMV QR, ESC/POS e
                   server, browser and print agent so totals and prints are identical everywhere.
 server            Fastify API, Socket.IO gateway, PostgreSQL schema/migrations, services
                   (orders, payments, kitchen, queue, stock, printing), background jobs, tests.
-web               React PWA: kiosk, cashier, KDS, queue display, admin, browser printing layer.
-print-agent       Local Node service driving LAN / USB / serial / Bluetooth-SPP printers.
+web               React PWA: park site, member portal, park kiosk, counter, POS, gate display/console,
+                  ride scanner/operator, restaurant kiosk, cashier, KDS, queue display, admin,
+                  browser printing layer (WebUSB / Web Bluetooth / Web Serial).
+print-agent       Local Node service driving LAN / USB / serial / Bluetooth-SPP printers, plus the
+                  gate / locker edge controller (GPIO or network relay, see docs/PARK.md).
 scripts           e2e browser flow, fake network printer, icon renderer.
 docs              Architecture, workflows, hardware & integration notes.
 ```
@@ -102,4 +135,5 @@ QR → verification → **6 concurrent approvals** producing exactly one payment
 rejection → kiosk notification → re-verify, cash change + idempotency keys, signed card webhooks (forged / stale / replayed),
 kitchen → queue → pickup, stock reserve/commit/release, print claim/retry, manager-PIN refunds and every report + CSV/XLSX export.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design, state machines, security model and hardware integration.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design, state machines, security model and hardware integration,
+and [docs/PARK.md](docs/PARK.md) for the park modules, credentials, gates, edge controller, languages and fonts.

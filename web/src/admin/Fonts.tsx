@@ -8,6 +8,7 @@ import { Badge, Button, Card, Field, Input, Loading, Modal, NumberInput, PageHea
 import { useList, useSaveSetting, useSettings } from './hooks';
 import { PrintPreview } from './PrintPreview';
 import { sampleJob } from './samples';
+import { tt } from '../lib/legacy-i18n';
 
 const SURFACES: [string, { th: string; en: string; zh: string }][] = [
   ['web', { th: 'เว็บไซต์ / สมาชิก', en: 'Website / member portal', zh: '官网 / 会员中心' }],
@@ -83,7 +84,7 @@ export default function Fonts() {
         </Table>
       </Card>
       <div className="mt-5 grid gap-5 2xl:grid-cols-[1fr_400px]">
-        <Card title="Font library" actions={<><Button size="sm" variant="outline" icon={<Plus className="h-4 w-4" />} onClick={() => setAddGoogle(true)}>Google Font</Button><Button size="sm" variant="outline" icon={<Upload className="h-4 w-4" />} onClick={() => setUpload(true)}>Upload font</Button></>}>
+        <Card title={tt('Font library')} actions={<><Button size="sm" variant="outline" icon={<Plus className="h-4 w-4" />} onClick={() => setAddGoogle(true)}>{tt('Google Font')}</Button><Button size="sm" variant="outline" icon={<Upload className="h-4 w-4" />} onClick={() => setUpload(true)}>{tt('Upload font')}</Button></>}>
           <div className="space-y-2">
             {fonts.data?.map((f: any) => (
               <div key={f.id} className="flex items-center gap-4 rounded-xl border px-4 py-3">
@@ -92,12 +93,12 @@ export default function Fonts() {
                   <div className="mt-0.5 flex gap-1"><Badge className={f.source === 'UPLOAD' ? 'bg-violet-100 text-violet-800' : 'bg-sky-100 text-sky-800'}>{f.source}</Badge>{f.format && <Badge>{f.format}</Badge>}</div>
                 </div>
                 <div className="flex-1 truncate text-xl" style={{ fontFamily: `"${f.family}"` }}>{SAMPLE}</div>
-                <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => { if (await confirmDialog('Remove font?', 'Surfaces using it fall back to system fonts.', true)) { await staffApi(`/settings/fonts/${f.id}`, { method: 'DELETE' }); void fonts.refetch(); } }}><Trash2 className="h-4 w-4" /></Button>
+                <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => { if (await confirmDialog(tt('Remove font?'), 'Surfaces using it fall back to system fonts.', true)) { await staffApi(`/settings/fonts/${f.id}`, { method: 'DELETE' }); void fonts.refetch(); } }}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
           </div>
         </Card>
-        <Card title="Print preview" actions={<Select value={previewSurface} onChange={(e) => setPreviewSurface(e.target.value as any)} className="w-40"><option value="receipt">Receipt</option><option value="kitchenTicket">Kitchen ticket</option></Select>}>
+        <Card title={tt('Print preview')} actions={<Select value={previewSurface} onChange={(e) => setPreviewSurface(e.target.value as any)} className="w-40"><option value="receipt">{tt('Receipt')}</option><option value="kitchenTicket">{tt('Kitchen ticket')}</option></Select>}>
           <PrintPreview payload={sampleJob(previewSurface === 'receipt' ? 'RECEIPT' : 'KITCHEN_TICKET', s.data?.settings.store, fontForLang(cfg[previewSurface], t.lang) ?? cfg[previewSurface], s.data?.settings.receipt.footer)} paperWidth={80} scale={0.55} />
         </Card>
       </div>
@@ -114,18 +115,18 @@ function GoogleFontDialog({ onClose, onDone }: { onClose: () => void; onDone: ()
     if (family.length > 2) loadFont(family, [], [400]);
   }, [family]);
   return (
-    <Modal open onClose={onClose} title="Add Google Font" size="md" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={!family} onClick={async () => {
+    <Modal open onClose={onClose} title={tt('Add Google Font')} size="md" footer={<><Button variant="ghost" onClick={onClose}>{tt('Cancel')}</Button><Button disabled={!family} onClick={async () => {
       try {
         await staffApi('/settings/fonts/google', { body: { family, weights: weights.split(',').map((w) => Number(w.trim())).filter(Boolean) } });
-        toast.success('Font added');
+        toast.success(tt('Font added'));
         onDone();
         onClose();
       } catch (e) { toast.error(errorMessage(e)); }
-    }}>Add</Button></>}>
+    }}>{tt('Add')}</Button></>}>
       <div className="space-y-3">
-        <Field label="Family name (exactly as on fonts.google.com)"><Input value={family} onChange={(e) => setFamily(e.target.value)} placeholder="e.g. Bai Jamjuree" /></Field>
+        <Field label={tt('Family name (exactly as on fonts.google.com)')}><Input value={family} onChange={(e) => setFamily(e.target.value)} placeholder="e.g. Bai Jamjuree" /></Field>
         <div className="flex flex-wrap gap-1.5">{SUGGESTED.map((f) => <button key={f} onClick={() => setFamily(f)} className="rounded-full bg-slate-100 px-3 py-1 text-xs hover:bg-slate-200">{f}</button>)}</div>
-        <Field label="Weights"><Input value={weights} onChange={(e) => setWeights(e.target.value)} /></Field>
+        <Field label={tt('Weights')}><Input value={weights} onChange={(e) => setWeights(e.target.value)} /></Field>
         {family && <div className="rounded-xl bg-slate-50 p-4 text-2xl" style={{ fontFamily: `"${family}"` }}>{SAMPLE}</div>}
       </div>
     </Modal>
@@ -139,7 +140,7 @@ function UploadFontDialog({ onClose, onDone }: { onClose: () => void; onDone: ()
   const [weight, setWeight] = useState(400);
   const [busy, setBusy] = useState(false);
   return (
-    <Modal open onClose={onClose} title="Upload font" size="md" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button loading={busy} disabled={!file || !family} onClick={async () => {
+    <Modal open onClose={onClose} title={tt('Upload font')} size="md" footer={<><Button variant="ghost" onClick={onClose}>{tt('Cancel')}</Button><Button loading={busy} disabled={!file || !family} onClick={async () => {
       setBusy(true);
       try {
         const fd = new FormData();
@@ -147,17 +148,17 @@ function UploadFontDialog({ onClose, onDone }: { onClose: () => void; onDone: ()
         fd.append('weight', String(weight));
         fd.append('file', file!);
         await staffApi('/settings/fonts/upload', { method: 'POST', body: fd, timeoutMs: 120000 });
-        toast.success('Font uploaded');
+        toast.success(tt('Font uploaded'));
         onDone();
         onClose();
       } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
-    }}>Upload</Button></>}>
+    }}>{tt('Upload')}</Button></>}>
       <div className="space-y-3">
         <input ref={ref} type="file" accept=".ttf,.otf,.woff,.woff2" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; setFile(f); if (f && !family) setFamily(f.name.replace(/\.[^.]+$/, '').replace(/[-_](Regular|Bold|Medium|Light)$/i, '')); }} />
         <Button variant="outline" icon={<Upload className="h-4 w-4" />} onClick={() => ref.current?.click()}>{file ? file.name : 'Choose .ttf / .otf / .woff / .woff2'}</Button>
-        <Field label="Family name"><Input value={family} onChange={(e) => setFamily(e.target.value)} /></Field>
-        <Field label="Weight"><Select value={weight} onChange={(e) => setWeight(Number(e.target.value))}>{[300, 400, 500, 600, 700, 800].map((w) => <option key={w}>{w}</option>)}</Select></Field>
-        <p className="text-xs text-slate-500">Make sure the font includes Thai and/or Chinese glyphs if you use it for those languages. Print Agents download uploaded fonts automatically for receipt rendering.</p>
+        <Field label={tt('Family name')}><Input value={family} onChange={(e) => setFamily(e.target.value)} /></Field>
+        <Field label={tt('Weight')}><Select value={weight} onChange={(e) => setWeight(Number(e.target.value))}>{[300, 400, 500, 600, 700, 800].map((w) => <option key={w}>{w}</option>)}</Select></Field>
+        <p className="text-xs text-slate-500">{tt('Make sure the font includes Thai and/or Chinese glyphs if you use it for those languages. Print Agents download uploaded fonts automatically for receipt rendering.')}</p>
       </div>
     </Modal>
   );

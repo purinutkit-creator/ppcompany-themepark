@@ -6,6 +6,7 @@ import { staffApi } from '../lib/api';
 import { money, dateTime } from '../lib/format';
 import { Card, Empty, ErrorBox, Loading, PageHeader, Stat, StatusBadge } from '../components/ui';
 import { SimpleBars } from './charts';
+import { tt } from '../lib/legacy-i18n';
 
 export default function Dashboard() {
   const q = useQuery({ queryKey: ['dashboard'], queryFn: () => staffApi<any>('/reports/dashboard'), refetchInterval: 30000 });
@@ -18,29 +19,29 @@ export default function Dashboard() {
   const waiting = (st.CREATED ?? 0) + (st.WAITING_PAYMENT ?? 0) + (st.WAITING_CASH_PAYMENT ?? 0) + (st.WAITING_CARD ?? 0) + (st.WAITING_VERIFICATION ?? 0);
   return (
     <div>
-      <PageHeader title="Dashboard" sub={`Today · ${d.timezone} · live`} />
+      <PageHeader title={tt('Dashboard')} sub={`Today · ${d.timezone} · live`} />
       {d.pendingVerifications > 0 && (
         <Link to="/cashier/verify" className="mb-4 flex items-center gap-2 rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-800">
           <AlertTriangle className="h-4 w-4" /> {d.pendingVerifications} payment(s) waiting for verification — open Slip Verification Center →
         </Link>
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Sales today" value={money(s.sales)} icon={<TrendingUp className="h-5 w-5" />} tone="green" sub={Number(s.refunded) ? `Refunded ${money(s.refunded)}` : undefined} />
-        <Stat label="Orders" value={s.orders} icon={<Receipt className="h-5 w-5" />} tone="blue" />
-        <Stat label="Average order value" value={money(s.aov)} icon={<ShoppingCart className="h-5 w-5" />} tone="violet" />
-        <Stat label="Customers" value={s.customers} icon={<Users className="h-5 w-5" />} tone="amber" />
-        <Stat label="Cash" value={money(s.cash)} icon={<Banknote className="h-5 w-5" />} />
-        <Stat label="Transfer / QR" value={money(s.transfer)} icon={<QrCode className="h-5 w-5" />} />
-        <Stat label="Card" value={money(s.card)} icon={<CreditCard className="h-5 w-5" />} />
-        <Stat label="Order status" value={<span className="text-base">Waiting {waiting} · Preparing {(st.NEW ?? 0) + (st.PREPARING ?? 0) + (st.PAID ?? 0) + (st.CONFIRMED ?? 0)} · Ready {st.READY ?? 0} · Done {st.COMPLETED ?? 0}</span>} />
+        <Stat label={tt('Sales today')} value={money(s.sales)} icon={<TrendingUp className="h-5 w-5" />} tone="green" sub={Number(s.refunded) ? `Refunded ${money(s.refunded)}` : undefined} />
+        <Stat label={tt('Orders')} value={s.orders} icon={<Receipt className="h-5 w-5" />} tone="blue" />
+        <Stat label={tt('Average order value')} value={money(s.aov)} icon={<ShoppingCart className="h-5 w-5" />} tone="violet" />
+        <Stat label={tt('Customers')} value={s.customers} icon={<Users className="h-5 w-5" />} tone="amber" />
+        <Stat label={tt('Cash')} value={money(s.cash)} icon={<Banknote className="h-5 w-5" />} />
+        <Stat label={tt('Transfer / QR')} value={money(s.transfer)} icon={<QrCode className="h-5 w-5" />} />
+        <Stat label={tt('Card')} value={money(s.card)} icon={<CreditCard className="h-5 w-5" />} />
+        <Stat label={tt('Order status')} value={<span className="text-base">Waiting {waiting} · Preparing {(st.NEW ?? 0) + (st.PREPARING ?? 0) + (st.PAID ?? 0) + (st.CONFIRMED ?? 0)} · Ready {st.READY ?? 0} · Done {st.COMPLETED ?? 0}</span>} />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-3">
-        <Card title="Hourly sales" className="xl:col-span-2">
-          {d.hourly.length ? <SimpleBars data={hourly} x="hour" y="sales" /> : <Empty title="No sales yet today" />}
+        <Card title={tt('Hourly sales')} className="xl:col-span-2">
+          {d.hourly.length ? <SimpleBars data={hourly} x="hour" y="sales" /> : <Empty title={tt('No sales yet today')} />}
         </Card>
-        <Card title="Best sellers">
-          {d.bestSellers.length === 0 ? <Empty title="No sales yet" /> : (
+        <Card title={tt('Best sellers')}>
+          {d.bestSellers.length === 0 ? <Empty title={tt('No sales yet')} /> : (
             <ol className="space-y-2">
               {d.bestSellers.map((b: any, i: number) => (
                 <li key={i} className="flex items-center gap-3">
@@ -56,21 +57,21 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-3">
-        <Card title="Category sales">
-          {d.categories.length ? <SimpleBars data={d.categories.map((c: any) => ({ ...c, sales: Number(c.sales) }))} x="name" y="sales" horizontal height={Math.max(160, d.categories.length * 34)} /> : <Empty title="No sales yet" />}
+        <Card title={tt('Category sales')}>
+          {d.categories.length ? <SimpleBars data={d.categories.map((c: any) => ({ ...c, sales: Number(c.sales) }))} x="name" y="sales" horizontal height={Math.max(160, d.categories.length * 34)} /> : <Empty title={tt('No sales yet')} />}
         </Card>
-        <Card title="Kiosk status" actions={<Link className="text-sm text-primary" to="/admin/kiosks">Manage</Link>}>
-          {d.kiosks.length === 0 ? <Empty title="No kiosks" /> : d.kiosks.map((k: any) => (
+        <Card title={tt('Kiosk status')} actions={<Link className="text-sm text-primary" to="/admin/kiosks">{tt('Manage')}</Link>}>
+          {d.kiosks.length === 0 ? <Empty title={tt('No kiosks')} /> : d.kiosks.map((k: any) => (
             <div key={k.id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
               <div>
                 <div className="font-medium">{k.code}</div>
-                <div className="text-xs text-slate-500">Last seen {dateTime(k.last_seen_at)} · v{k.app_version ?? '—'}</div>
+                <div className="text-xs text-slate-500">{tt('Last seen')} {dateTime(k.last_seen_at)} · v{k.app_version ?? '—'}</div>
               </div>
               <StatusBadge status={k.status} />
             </div>
           ))}
         </Card>
-        <Card title="Printer status" actions={<Link className="text-sm text-primary" to="/admin/printers">Manage</Link>}>
+        <Card title={tt('Printer status')} actions={<Link className="text-sm text-primary" to="/admin/printers">{tt('Manage')}</Link>}>
           {d.agents.map((a: any) => (
             <div key={a.id} className="flex items-center justify-between border-b py-2 text-sm">
               <div>

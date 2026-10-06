@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { staffApi } from '../lib/api';
 import { dateTime } from '../lib/format';
 import { Badge, Button, Card, Empty, Field, Input, Loading, Modal, PageHeader, Select, Table, Td } from '../components/ui';
+import { tt } from '../lib/legacy-i18n';
 
 export default function Audit() {
   const [action, setAction] = useState('');
@@ -21,20 +22,20 @@ export default function Audit() {
   const list = useQuery({ queryKey: ['audit', p.toString()], queryFn: () => staffApi<any[]>(`/settings/audit?${p}`) });
   return (
     <div>
-      <PageHeader title="Audit logs" sub="Every sensitive action: who, what, old → new value, when, from which device" />
+      <PageHeader title={tt('Audit logs')} sub={tt('Every sensitive action: who, what, old → new value, when, from which device')} />
       <Card>
         <div className="mb-4 grid gap-3 md:grid-cols-4">
-          <Field label="Action">
+          <Field label={tt('Action')}>
             <Select value={action} onChange={(e) => { setAction(e.target.value); setOffset(0); }}>
-              <option value="">All</option>
+              <option value="">{tt('All')}</option>
               {actions.data?.map((a) => <option key={a}>{a}</option>)}
             </Select>
           </Field>
-          <Field label="Search (user / entity / order #)"><Input value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></Field>
-          <Field label="From"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label="To"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          <Field label={tt('Search (user / entity / order #)')}><Input value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} /></Field>
+          <Field label={tt('From')}><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label={tt('To')}><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
         </div>
-        {list.isLoading ? <Loading /> : !list.data?.length ? <Empty title="No log entries" /> : (
+        {list.isLoading ? <Loading /> : !list.data?.length ? <Empty title={tt('No log entries')} /> : (
           <Table head={['Date / time', 'User', 'Role', 'Action', 'Entity', 'Order', 'Approved by', 'IP / device', '']}>
             {list.data.map((a) => (
               <tr key={a.id}>
@@ -46,25 +47,25 @@ export default function Audit() {
                 <Td>{a.order_number ? <Link to={`/admin/orders/${a.order_id}`} className="text-primary">#{a.order_number}</Link> : '—'}</Td>
                 <Td>{a.approved_by_name ?? '—'}</Td>
                 <Td className="max-w-48 truncate text-xs text-slate-500" >{a.ip} {a.device}</Td>
-                <Td><Button size="sm" variant="ghost" onClick={() => setView(a)}>View</Button></Td>
+                <Td><Button size="sm" variant="ghost" onClick={() => setView(a)}>{tt('View')}</Button></Td>
               </tr>
             ))}
           </Table>
         )}
         <div className="mt-3 flex justify-end gap-2">
-          <Button size="sm" variant="outline" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - 100))}>Previous</Button>
-          <Button size="sm" variant="outline" disabled={(list.data?.length ?? 0) < 100} onClick={() => setOffset((o) => o + 100)}>Next</Button>
+          <Button size="sm" variant="outline" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - 100))}>{tt('Previous')}</Button>
+          <Button size="sm" variant="outline" disabled={(list.data?.length ?? 0) < 100} onClick={() => setOffset((o) => o + 100)}>{tt('Next')}</Button>
         </div>
       </Card>
       <Modal open={!!view} onClose={() => setView(null)} title={view?.action} size="lg">
         {view && (
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <div className="mb-1 text-sm font-semibold">Old value</div>
+              <div className="mb-1 text-sm font-semibold">{tt('Old value')}</div>
               <pre className="max-h-96 overflow-auto rounded-xl bg-slate-50 p-3 text-xs">{JSON.stringify(view.old_value, null, 2) ?? '—'}</pre>
             </div>
             <div>
-              <div className="mb-1 text-sm font-semibold">New value</div>
+              <div className="mb-1 text-sm font-semibold">{tt('New value')}</div>
               <pre className="max-h-96 overflow-auto rounded-xl bg-slate-50 p-3 text-xs">{JSON.stringify(view.new_value, null, 2) ?? '—'}</pre>
             </div>
             <div className="text-xs text-slate-500 md:col-span-2">{view.ip} · {view.device}</div>

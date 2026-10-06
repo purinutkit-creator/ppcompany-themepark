@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, Fragment, useContext, useEffect, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Socket } from 'socket.io-client';
@@ -35,6 +35,7 @@ export function StaffShell({ children, perms, surface }: { children: ReactNode; 
   const printer = useBrowserPrintExecutor(socket, !!user && surface !== 'kds');
 
   const setOverrides = useUiLang((s) => s.setOverrides);
+  const lang = useUiLang((s) => s.lang);
   const t = useT();
   useEffect(() => {
     if (!client.data) return;
@@ -54,5 +55,6 @@ export function StaffShell({ children, perms, surface }: { children: ReactNode; 
     );
   }
   if (!branchId) return <Empty title={t.x({ th: 'ยังไม่ได้เลือกสาขา', en: 'No branch selected', zh: '未选择分店' })} />;
-  return <Ctx.Provider value={{ socket, connected, client: client.data, printer }}>{children}</Ctx.Provider>;
+  // Re-mount on a language switch so screens that translate with plain `tt()` calls pick up the new language.
+  return <Ctx.Provider value={{ socket, connected, client: client.data, printer }}><Fragment key={lang}>{children}</Fragment></Ctx.Provider>;
 }

@@ -5,6 +5,7 @@ import { staffApi, errorMessage } from '../lib/api';
 import { money } from '../lib/format';
 import { Badge, Button, Card, Empty, Field, I18nInput, Input, Loading, MediaInput, Modal, NumberInput, PageHeader, Select, Table, Td, Toggle, confirmDialog, toast } from '../components/ui';
 import { useCrud, useList } from './hooks';
+import { tt } from '../lib/legacy-i18n';
 
 const blank = () => ({
   sku: '', barcode: '', category_id: '', image_url: '', price: 0, cost: 0, vat_rate: null as number | null, station_id: null, printer_id: null, schedule_id: null,
@@ -33,19 +34,19 @@ export default function Products() {
   };
   return (
     <div>
-      <PageHeader title="Products" sub="สินค้า — names & descriptions in ไทย / English / 中文" actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => setEdit(blank())}>New product</Button>} />
+      <PageHeader title={tt('Products')} sub={tt('สินค้า — names & descriptions in ไทย / English / 中文')} actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => setEdit(blank())}>{tt('New product')}</Button>} />
       <Card>
         <div className="mb-4 flex flex-wrap gap-3">
           <div className="relative w-72">
             <Search className="absolute top-2.5 left-3 h-4 w-4 text-slate-400" />
-            <Input className="pl-9" placeholder="Search name or SKU" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input className="pl-9" placeholder={tt('Search name or SKU')} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <Select value={cat} onChange={(e) => setCat(e.target.value)} className="w-60">
-            <option value="">All categories</option>
+            <option value="">{tt('All categories')}</option>
             {cats.data?.filter((c: any) => c.kind === 'STANDARD').map((c: any) => <option key={c.id} value={c.id}>{tr(c.name, 'th')}</option>)}
           </Select>
         </div>
-        {list.isLoading ? <Loading /> : rows.length === 0 ? <Empty title="No products" /> : (
+        {list.isLoading ? <Loading /> : rows.length === 0 ? <Empty title={tt('No products')} /> : (
           <Table head={['', 'Product', 'SKU', 'Category', 'Price', 'Cost', 'Stock', 'Status', '']}>
             {rows.map((p: any) => (
               <tr key={p.id} className="hover:bg-slate-50">
@@ -53,7 +54,7 @@ export default function Products() {
                 <Td>
                   <div className="font-medium">{p.translations?.th?.name}</div>
                   <div className="text-xs text-slate-500">{p.translations?.en?.name} · {p.translations?.zh?.name}</div>
-                  <div className="mt-0.5 flex gap-1">{p.is_recommended && <Badge className="bg-amber-100 text-amber-800">★ Recommended</Badge>}{p.schedule_id && <Badge>Scheduled</Badge>}</div>
+                  <div className="mt-0.5 flex gap-1">{p.is_recommended && <Badge className="bg-amber-100 text-amber-800">★ Recommended</Badge>}{p.schedule_id && <Badge>{tt('Scheduled')}</Badge>}</div>
                 </Td>
                 <Td className="font-mono text-xs">{p.sku}</Td>
                 <Td>{tr(cats.data?.find((c: any) => c.id === p.category_id)?.name, 'th')}</Td>
@@ -62,12 +63,12 @@ export default function Products() {
                 <Td>{p.track_stock ? `${Number(p.stock_current ?? 0) - Number(p.stock_reserved ?? 0)} avail.` : '—'}</Td>
                 <Td>
                   <Select value={p.status} onChange={(e) => setStatus(p, e.target.value)} className="w-40 text-xs">
-                    <option value="AVAILABLE">Available</option><option value="SOLD_OUT">Sold out</option><option value="UNAVAILABLE">Temporarily unavailable</option><option value="HIDDEN">Hidden</option>
+                    <option value="AVAILABLE">{tt('Available')}</option><option value="SOLD_OUT">{tt('Sold out')}</option><option value="UNAVAILABLE">{tt('Temporarily unavailable')}</option><option value="HIDDEN">{tt('Hidden')}</option>
                   </Select>
                 </Td>
                 <Td className="text-right whitespace-nowrap">
-                  <Button size="sm" variant="outline" onClick={() => setEdit({ ...blank(), ...p, translations: { ...blank().translations, ...p.translations } })}>Edit</Button>
-                  <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await confirmDialog('Delete product?', `${p.translations?.th?.name} will be removed from the menu. Past orders keep their history.`, true)) && crud.remove(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => setEdit({ ...blank(), ...p, translations: { ...blank().translations, ...p.translations } })}>{tt('Edit')}</Button>
+                  <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await confirmDialog(tt('Delete product?'), `${p.translations?.th?.name} will be removed from the menu. Past orders keep their history.`, true)) && crud.remove(p.id)}><Trash2 className="h-4 w-4" /></Button>
                 </Td>
               </tr>
             ))}
@@ -116,58 +117,58 @@ function ProductEditor({ value, onClose, onSaved, save }: { value: any; onClose:
     }
   };
   return (
-    <Modal open onClose={onClose} size="xl" title={p.id ? `Edit product — ${p.sku}` : 'New product'} footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button loading={busy} onClick={submit} disabled={!p.sku || !p.category_id || !p.translations?.th?.name}>Save</Button></>}>
+    <Modal open onClose={onClose} size="xl" title={p.id ? `Edit product — ${p.sku}` : 'New product'} footer={<><Button variant="ghost" onClick={onClose}>{tt('Cancel')}</Button><Button loading={busy} onClick={submit} disabled={!p.sku || !p.category_id || !p.translations?.th?.name}>{tt('Save')}</Button></>}>
       <div className="space-y-5">
         <div className="grid gap-4 md:grid-cols-4">
-          <Field label="SKU *"><Input value={p.sku} onChange={(e) => set('sku', e.target.value.toUpperCase())} /></Field>
-          <Field label="Barcode"><Input value={p.barcode ?? ''} onChange={(e) => set('barcode', e.target.value)} /></Field>
-          <Field label="Category *">
+          <Field label={tt('SKU *')}><Input value={p.sku} onChange={(e) => set('sku', e.target.value.toUpperCase())} /></Field>
+          <Field label={tt('Barcode')}><Input value={p.barcode ?? ''} onChange={(e) => set('barcode', e.target.value)} /></Field>
+          <Field label={tt('Category *')}>
             <Select value={p.category_id} onChange={(e) => set('category_id', e.target.value)}>
               <option value="">—</option>
               {cats.data?.filter((c: any) => c.kind === 'STANDARD').map((c: any) => <option key={c.id} value={c.id}>{tr(c.name, 'th')}</option>)}
             </Select>
           </Field>
-          <Field label="Status">
+          <Field label={tt('Status')}>
             <Select value={p.status} onChange={(e) => set('status', e.target.value)}>
-              <option value="AVAILABLE">Available</option><option value="SOLD_OUT">Sold out</option><option value="UNAVAILABLE">Temporarily unavailable</option><option value="HIDDEN">Hidden</option>
+              <option value="AVAILABLE">{tt('Available')}</option><option value="SOLD_OUT">{tt('Sold out')}</option><option value="UNAVAILABLE">{tt('Temporarily unavailable')}</option><option value="HIDDEN">{tt('Hidden')}</option>
             </Select>
           </Field>
         </div>
-        <I18nInput label="Name *" value={tr3('name')} onChange={(v) => setTr3('name', v)} required />
-        <I18nInput label="Short description" value={tr3('short_description')} onChange={(v) => setTr3('short_description', v)} />
-        <I18nInput label="Description" value={tr3('description')} onChange={(v) => setTr3('description', v)} multiline />
-        <MediaInput label="Image (URL or upload)" value={p.image_url} onChange={(v) => set('image_url', v)} />
+        <I18nInput label={tt('Name *')} value={tr3('name')} onChange={(v) => setTr3('name', v)} required />
+        <I18nInput label={tt('Short description')} value={tr3('short_description')} onChange={(v) => setTr3('short_description', v)} />
+        <I18nInput label={tt('Description')} value={tr3('description')} onChange={(v) => setTr3('description', v)} multiline />
+        <MediaInput label={tt('Image (URL or upload)')} value={p.image_url} onChange={(v) => set('image_url', v)} />
         <div className="grid gap-4 md:grid-cols-4">
-          <Field label="Price (฿) *"><NumberInput value={p.price} onChange={(v) => set('price', v ?? 0)} step="0.01" /></Field>
-          <Field label="Cost (฿)"><NumberInput value={p.cost} onChange={(v) => set('cost', v ?? 0)} step="0.01" /></Field>
-          <Field label="VAT % (blank = system)"><NumberInput value={p.vat_rate} onChange={(v) => set('vat_rate', v)} step="0.01" /></Field>
-          <Field label="Sort order"><NumberInput value={p.sort} onChange={(v) => set('sort', v ?? 0)} /></Field>
-          <Field label="Kitchen station" hint="Blank = category's station">
+          <Field label={tt('Price (฿) *')}><NumberInput value={p.price} onChange={(v) => set('price', v ?? 0)} step="0.01" /></Field>
+          <Field label={tt('Cost (฿)')}><NumberInput value={p.cost} onChange={(v) => set('cost', v ?? 0)} step="0.01" /></Field>
+          <Field label={tt('VAT % (blank = system)')}><NumberInput value={p.vat_rate} onChange={(v) => set('vat_rate', v)} step="0.01" /></Field>
+          <Field label={tt('Sort order')}><NumberInput value={p.sort} onChange={(v) => set('sort', v ?? 0)} /></Field>
+          <Field label={tt('Kitchen station')} hint={tt('Blank = category\'s station')}>
             <Select value={p.station_id ?? ''} onChange={(e) => set('station_id', e.target.value || null)}>
               <option value="">(from category)</option>
               {stations.data?.map((s: any) => <option key={s.id} value={s.id}>{tr(s.name, 'th')}</option>)}
             </Select>
           </Field>
-          <Field label="Printer override">
+          <Field label={tt('Printer override')}>
             <Select value={p.printer_id ?? ''} onChange={(e) => set('printer_id', e.target.value || null)}>
               <option value="">(station routing)</option>
               {printers.data?.filter((x: any) => x.type !== 'RECEIPT').map((x: any) => <option key={x.id} value={x.id}>{x.name}</option>)}
             </Select>
           </Field>
-          <Field label="Selling schedule">
+          <Field label={tt('Selling schedule')}>
             <Select value={p.schedule_id ?? ''} onChange={(e) => set('schedule_id', e.target.value || null)}>
-              <option value="">All day</option>
+              <option value="">{tt('All day')}</option>
               {schedules.data?.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.start_time}–{s.end_time})</option>)}
             </Select>
           </Field>
           <div className="flex flex-col justify-end gap-2 pb-1">
-            <Toggle checked={!!p.is_recommended} onChange={(v) => set('is_recommended', v)} label="Recommended" />
-            <Toggle checked={!!p.track_stock} onChange={(v) => set('track_stock', v)} label="Track stock" />
+            <Toggle checked={!!p.is_recommended} onChange={(v) => set('is_recommended', v)} label={tt('Recommended')} />
+            <Toggle checked={!!p.track_stock} onChange={(v) => set('track_stock', v)} label={tt('Track stock')} />
           </div>
         </div>
 
         <div>
-          <div className="mb-2 text-sm font-semibold">Modifier groups (customization)</div>
+          <div className="mb-2 text-sm font-semibold">{tt('Modifier groups (customization)')}</div>
           <div className="space-y-1.5">
             {p.modifier_group_ids.map((gid: string, i: number) => {
               const g = groups.data?.find((x: any) => x.id === gid);
@@ -188,21 +189,21 @@ function ProductEditor({ value, onClose, onSaved, save }: { value: any; onClose:
         </div>
 
         <div>
-          <div className="mb-2 text-sm font-semibold">Upsell recommendations</div>
+          <div className="mb-2 text-sm font-semibold">{tt('Upsell recommendations')}</div>
           {p.recommendations.map((r: any, i: number) => (
             <div key={i} className="mb-2 rounded-xl border p-3">
               <div className="grid gap-3 md:grid-cols-[1fr_160px_auto]">
                 <Select value={r.recommended_product_id} onChange={(e) => set('recommendations', p.recommendations.map((x: any, j: number) => (j === i ? { ...x, recommended_product_id: e.target.value } : x)))}>
                   {products.data?.filter((x: any) => x.id !== p.id).map((x: any) => <option key={x.id} value={x.id}>{x.translations?.th?.name ?? x.sku}</option>)}
                 </Select>
-                <NumberInput placeholder="Special price" value={r.special_price} onChange={(v) => set('recommendations', p.recommendations.map((x: any, j: number) => (j === i ? { ...x, special_price: v } : x)))} />
+                <NumberInput placeholder={tt('Special price')} value={r.special_price} onChange={(v) => set('recommendations', p.recommendations.map((x: any, j: number) => (j === i ? { ...x, special_price: v } : x)))} />
                 <Button variant="ghost" className="text-rose-600" onClick={() => set('recommendations', p.recommendations.filter((_: any, j: number) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
               </div>
               <div className="mt-2"><I18nInput value={r.message} onChange={(v) => set('recommendations', p.recommendations.map((x: any, j: number) => (j === i ? { ...x, message: v } : x)))} /></div>
             </div>
           ))}
           <Button size="sm" variant="outline" icon={<Plus className="h-4 w-4" />} disabled={!products.data?.length} onClick={() => set('recommendations', [...p.recommendations, { recommended_product_id: products.data!.find((x: any) => x.id !== p.id)?.id, message: { th: 'เพิ่มไหม?', en: 'Add this?', zh: '加一份吗？' }, special_price: null }])}>
-            Add recommendation
+            {tt('Add recommendation')}
           </Button>
         </div>
       </div>

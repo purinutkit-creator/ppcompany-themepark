@@ -6,6 +6,7 @@ import { Badge, Button, Card, Empty, Field, I18nInput, Input, Loading, Modal, Nu
 import { useCrud, useList } from './hooks';
 import { useParkOptions } from './park/options';
 import { useT } from '../lib/lang';
+import { tt } from '../lib/legacy-i18n';
 
 const TYPES: Record<string, string> = { PERCENT: 'Percentage discount', FIXED: 'Fixed discount', BUY_X_GET_Y: 'Buy X Get Y', COMBO: 'Combo price', SET_MENU: 'Set menu price', COUPON: 'Coupon', PROMO_CODE: 'Promo code' };
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -27,21 +28,21 @@ export default function Promotions() {
   const blank = { type: 'PERCENT', value_type: 'PERCENT', value: 10, scope: 'ORDER', name: {}, description: {}, badge: {}, product_ids: [], category_ids: [], branch_ids: [], days: [], requires_code: false, priority: 0, is_active: true, applies_to: 'FOOD', channels: [], item_types: [], package_ids: [], ticket_type_ids: [], tier_ids: [], birthday_only: false, members_only: false, stackable: true };
   return (
     <div>
-      <PageHeader title="Promotions" sub="Percentage, fixed, buy X get Y, combo, set menu, coupons & promo codes — with date/time/branch/product/category targeting" actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => setEdit(blank)}>New promotion</Button>} />
+      <PageHeader title={tt('Promotions')} sub={tt('Percentage, fixed, buy X get Y, combo, set menu, coupons & promo codes — with date/time/branch/product/category targeting')} actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => setEdit(blank)}>{tt('New promotion')}</Button>} />
       <Card>
         {list.isLoading ? <Loading /> : !list.data?.length ? <Empty /> : (
           <Table head={['Promotion', 'Type', 'Rule', 'Period', 'Usage', 'Status', '']}>
             {list.data.map((p: any) => (
               <tr key={p.id}>
                 <Td><div className="font-medium">{tr(p.name, 'th')}</div><div className="text-xs text-slate-500">{tr(p.name, 'en')}</div></Td>
-                <Td><Badge>{TYPES[p.type]}</Badge>{p.code && <Badge className="ml-1 bg-violet-100 font-mono text-violet-800">{p.code}</Badge>}<Badge className="ml-1 bg-sky-100 text-sky-800">{p.applies_to ?? 'FOOD'}</Badge>{p.stackable === false && <Badge className="ml-1">non-stack</Badge>}</Td>
+                <Td><Badge>{tt(TYPES[p.type] ?? p.type)}</Badge>{p.code && <Badge className="ml-1 bg-violet-100 font-mono text-violet-800">{p.code}</Badge>}<Badge className="ml-1 bg-sky-100 text-sky-800">{p.applies_to ?? 'FOOD'}</Badge>{p.stackable === false && <Badge className="ml-1">non-stack</Badge>}</Td>
                 <Td className="text-sm">{describe(p)}</Td>
                 <Td className="text-xs text-slate-600">{p.start_date ?? '∞'} → {p.end_date ?? '∞'}{p.start_time && <div>{p.start_time}–{p.end_time}</div>}{p.days?.length > 0 && <div>{p.days.map((d: number) => DAYS[d]).join(' ')}</div>}</Td>
                 <Td>{p.usage_count}{p.usage_limit ? ` / ${p.usage_limit}` : ''}</Td>
-                <Td>{p.is_active ? <Badge className="bg-emerald-100 text-emerald-800">Active</Badge> : <Badge>Inactive</Badge>}</Td>
+                <Td>{p.is_active ? <Badge className="bg-emerald-100 text-emerald-800">{tt('Active')}</Badge> : <Badge>{tt('Inactive')}</Badge>}</Td>
                 <Td className="text-right whitespace-nowrap">
-                  <Button size="sm" variant="outline" onClick={() => setEdit(p)}>Edit</Button>
-                  <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await confirmDialog('Delete promotion?', undefined, true)) && crud.remove(p.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => setEdit(p)}>{tt('Edit')}</Button>
+                  <Button size="sm" variant="ghost" className="text-rose-600" onClick={async () => (await confirmDialog(tt('Delete promotion?'), undefined, true)) && crud.remove(p.id)}><Trash2 className="h-4 w-4" /></Button>
                 </Td>
               </tr>
             ))}
@@ -96,49 +97,49 @@ function PromoEditor({ value, onClose, save }: { value: any; onClose: () => void
   };
   const productOpts = (products.data ?? []).map((x: any) => ({ id: x.id, label: x.translations?.th?.name ?? x.sku }));
   return (
-    <Modal open onClose={onClose} size="xl" title={p.id ? 'Edit promotion' : 'New promotion'} footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={!p.name?.th || (needsCode && !p.code)}>Save</Button></>}>
+    <Modal open onClose={onClose} size="xl" title={p.id ? tt('Edit promotion') : tt('New promotion')} footer={<><Button variant="ghost" onClick={onClose}>{tt('Cancel')}</Button><Button onClick={submit} disabled={!p.name?.th || (needsCode && !p.code)}>{tt('Save')}</Button></>}>
       <div className="space-y-4">
-        <I18nInput label="Name" value={p.name} onChange={(v) => set('name', v)} required />
-        <I18nInput label="Kiosk badge (e.g. -20%, 1 แถม 1)" value={p.badge} onChange={(v) => set('badge', v)} />
-        <I18nInput label="Description" value={p.description} onChange={(v) => set('description', v)} />
+        <I18nInput label={tt('Name')} value={p.name} onChange={(v) => set('name', v)} required />
+        <I18nInput label={tt('Kiosk badge (e.g. -20%, 1 แถม 1)')} value={p.badge} onChange={(v) => set('badge', v)} />
+        <I18nInput label={tt('Description')} value={p.description} onChange={(v) => set('description', v)} />
         <div className="grid gap-4 md:grid-cols-4">
-          <Field label="Type">
+          <Field label={tt('Type')}>
             <Select value={p.type} onChange={(e) => set('type', e.target.value)}>
-              {Object.entries(TYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              {Object.entries(TYPES).map(([k, l]) => <option key={k} value={k}>{tt(l)}</option>)}
             </Select>
           </Field>
           {['PERCENT', 'FIXED', 'COUPON', 'PROMO_CODE'].includes(p.type) && (
-            <Field label="Applies to">
-              <Select value={p.scope} onChange={(e) => set('scope', e.target.value)}><option value="ORDER">Whole order</option><option value="PRODUCT">Products</option><option value="CATEGORY">Categories</option></Select>
+            <Field label={tt('Applies to')}>
+              <Select value={p.scope} onChange={(e) => set('scope', e.target.value)}><option value="ORDER">{tt('Whole order')}</option><option value="PRODUCT">{tt('Products')}</option><option value="CATEGORY">{tt('Categories')}</option></Select>
             </Field>
           )}
           {['COUPON', 'PROMO_CODE'].includes(p.type) && (
-            <Field label="Value type"><Select value={p.value_type} onChange={(e) => set('value_type', e.target.value)}><option value="PERCENT">Percent</option><option value="FIXED">Fixed ฿</option></Select></Field>
+            <Field label={tt('Value type')}><Select value={p.value_type} onChange={(e) => set('value_type', e.target.value)}><option value="PERCENT">{tt('Percent')}</option><option value="FIXED">{tt('Fixed ฿')}</option></Select></Field>
           )}
           {!['COMBO', 'SET_MENU'].includes(p.type) && <Field label={p.type === 'BUY_X_GET_Y' ? '% off free items (100 = free)' : p.type === 'FIXED' || p.value_type === 'FIXED' ? 'Amount (฿)' : 'Percent (%)'}><NumberInput value={p.value} onChange={(v) => set('value', v)} /></Field>}
           {p.type === 'BUY_X_GET_Y' && (
             <>
-              <Field label="Buy qty (X)"><NumberInput value={p.buy_qty} onChange={(v) => set('buy_qty', v)} /></Field>
-              <Field label="Get qty (Y)"><NumberInput value={p.get_qty} onChange={(v) => set('get_qty', v)} /></Field>
+              <Field label={tt('Buy qty (X)')}><NumberInput value={p.buy_qty} onChange={(v) => set('buy_qty', v)} /></Field>
+              <Field label={tt('Get qty (Y)')}><NumberInput value={p.get_qty} onChange={(v) => set('get_qty', v)} /></Field>
             </>
           )}
-          {['COMBO', 'SET_MENU'].includes(p.type) && <Field label="Bundle price (฿)"><NumberInput value={p.combo_price} onChange={(v) => set('combo_price', v)} /></Field>}
-          <Field label="Min order (฿)"><NumberInput value={p.min_order} onChange={(v) => set('min_order', v)} /></Field>
-          <Field label="Max discount (฿)"><NumberInput value={p.max_discount} onChange={(v) => set('max_discount', v)} /></Field>
-          <Field label="Priority"><NumberInput value={p.priority} onChange={(v) => set('priority', v)} /></Field>
-          {needsCode && <Field label="Code"><Input value={p.code ?? ''} onChange={(e) => set('code', e.target.value.toUpperCase())} className="font-mono" /></Field>}
-          <Field label="Usage limit"><NumberInput value={p.usage_limit} onChange={(v) => set('usage_limit', v)} placeholder="unlimited" /></Field>
+          {['COMBO', 'SET_MENU'].includes(p.type) && <Field label={tt('Bundle price (฿)')}><NumberInput value={p.combo_price} onChange={(v) => set('combo_price', v)} /></Field>}
+          <Field label={tt('Min order (฿)')}><NumberInput value={p.min_order} onChange={(v) => set('min_order', v)} /></Field>
+          <Field label={tt('Max discount (฿)')}><NumberInput value={p.max_discount} onChange={(v) => set('max_discount', v)} /></Field>
+          <Field label={tt('Priority')}><NumberInput value={p.priority} onChange={(v) => set('priority', v)} /></Field>
+          {needsCode && <Field label={tt('Code')}><Input value={p.code ?? ''} onChange={(e) => set('code', e.target.value.toUpperCase())} className="font-mono" /></Field>}
+          <Field label={tt('Usage limit')}><NumberInput value={p.usage_limit} onChange={(v) => set('usage_limit', v)} placeholder={tt('unlimited')} /></Field>
         </div>
-        {(p.scope === 'PRODUCT' || ['BUY_X_GET_Y', 'COMBO', 'SET_MENU'].includes(p.type)) && p.scope !== 'CATEGORY' && <MultiPick label={['COMBO', 'SET_MENU'].includes(p.type) ? 'Bundle products (one of each)' : 'Products'} options={productOpts} value={p.product_ids} onChange={(v) => set('product_ids', v)} />}
-        {p.scope === 'CATEGORY' && <MultiPick label="Categories" options={(cats.data ?? []).filter((c: any) => c.kind === 'STANDARD').map((c: any) => ({ id: c.id, label: tr(c.name, 'th') }))} value={p.category_ids} onChange={(v) => set('category_ids', v)} />}
+        {(p.scope === 'PRODUCT' || ['BUY_X_GET_Y', 'COMBO', 'SET_MENU'].includes(p.type)) && p.scope !== 'CATEGORY' && <MultiPick label={['COMBO', 'SET_MENU'].includes(p.type) ? 'Bundle products (one of each)' : tt('Products')} options={productOpts} value={p.product_ids} onChange={(v) => set('product_ids', v)} />}
+        {p.scope === 'CATEGORY' && <MultiPick label={tt('Categories')} options={(cats.data ?? []).filter((c: any) => c.kind === 'STANDARD').map((c: any) => ({ id: c.id, label: tr(c.name, 'th') }))} value={p.category_ids} onChange={(v) => set('category_ids', v)} />}
         <div className="grid gap-4 md:grid-cols-4">
-          <Field label="Start date"><Input type="date" value={p.start_date ?? ''} onChange={(e) => set('start_date', e.target.value)} /></Field>
-          <Field label="End date"><Input type="date" value={p.end_date ?? ''} onChange={(e) => set('end_date', e.target.value)} /></Field>
-          <Field label="Start time"><Input type="time" value={p.start_time ?? ''} onChange={(e) => set('start_time', e.target.value)} /></Field>
-          <Field label="End time"><Input type="time" value={p.end_time ?? ''} onChange={(e) => set('end_time', e.target.value)} /></Field>
+          <Field label={tt('Start date')}><Input type="date" value={p.start_date ?? ''} onChange={(e) => set('start_date', e.target.value)} /></Field>
+          <Field label={tt('End date')}><Input type="date" value={p.end_date ?? ''} onChange={(e) => set('end_date', e.target.value)} /></Field>
+          <Field label={tt('Start time')}><Input type="time" value={p.start_time ?? ''} onChange={(e) => set('start_time', e.target.value)} /></Field>
+          <Field label={tt('End time')}><Input type="time" value={p.end_time ?? ''} onChange={(e) => set('end_time', e.target.value)} /></Field>
         </div>
-        <MultiPick label="Days (none = every day)" options={DAYS.map((d, i) => ({ id: String(i), label: d }))} value={p.days.map(String)} onChange={(v) => set('days', v.map(Number))} />
-        <MultiPick label="Branches (none = all)" options={(branches.data ?? []).map((b: any) => ({ id: b.id, label: b.code }))} value={p.branch_ids} onChange={(v) => set('branch_ids', v)} />
+        <MultiPick label={tt('Days (none = every day)')} options={DAYS.map((d, i) => ({ id: String(i), label: d }))} value={p.days.map(String)} onChange={(v) => set('days', v.map(Number))} />
+        <MultiPick label={tt('Branches (none = all)')} options={(branches.data ?? []).map((b: any) => ({ id: b.id, label: b.code }))} value={p.branch_ids} onChange={(v) => set('branch_ids', v)} />
         <div className="space-y-3 rounded-2xl border p-3">
           <div className="font-semibold">{t.x({ th: 'ใช้กับ / เงื่อนไขสวนสนุก', en: 'Applies to / park rules', zh: '适用范围 / 乐园规则' })}</div>
           <Field label={t.x({ th: 'ใช้กับ', en: 'Applies to', zh: '适用于' })}>
@@ -169,7 +170,7 @@ function PromoEditor({ value, onClose, save }: { value: any; onClose: () => void
             </>
           )}
         </div>
-        <Toggle checked={p.is_active} onChange={(v) => set('is_active', v)} label="Active" />
+        <Toggle checked={p.is_active} onChange={(v) => set('is_active', v)} label={tt('Active')} />
       </div>
     </Modal>
   );

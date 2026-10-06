@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { staffApi } from '../lib/api';
 import { dateOnly, dateTime, money } from '../lib/format';
 import { Card, Empty, Field, Input, Loading, Select, StatusBadge, Table, Td, Stat } from '../components/ui';
+import { tt } from '../lib/legacy-i18n';
 
 export function PaymentHistory() {
   const [from, setFrom] = useState(dateOnly(new Date()));
@@ -20,27 +21,27 @@ export function PaymentHistory() {
   return (
     <div className="scroll-thin h-full overflow-y-auto p-5">
       <div className="mb-4 grid gap-3 md:grid-cols-4">
-        <Stat label="Total collected" value={money(sum())} tone="green" />
-        <Stat label="Cash" value={money(sum('CASH'))} />
-        <Stat label="QR / Transfer" value={money(sum('QR'))} />
-        <Stat label="Card" value={money(sum('CARD'))} />
+        <Stat label={tt('Total collected')} value={money(sum())} tone="green" />
+        <Stat label={tt('Cash')} value={money(sum('CASH'))} />
+        <Stat label={tt('QR / Transfer')} value={money(sum('QR'))} />
+        <Stat label={tt('Card')} value={money(sum('CARD'))} />
       </div>
       <Card>
         <div className="mb-4 grid gap-3 md:grid-cols-4">
-          <Field label="From"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label="To"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
-          <Field label="Method">
+          <Field label={tt('From')}><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label={tt('To')}><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          <Field label={tt('Method')}>
             <Select value={method} onChange={(e) => setMethod(e.target.value)}>
-              <option value="">All</option><option value="CASH">Cash</option><option value="QR">QR / Transfer</option><option value="CARD">Card</option><option value="OTHER">Other</option>
+              <option value="">{tt('All')}</option><option value="CASH">{tt('Cash')}</option><option value="QR">{tt('QR / Transfer')}</option><option value="CARD">{tt('Card')}</option><option value="OTHER">{tt('Other')}</option>
             </Select>
           </Field>
-          <Field label="Status">
+          <Field label={tt('Status')}>
             <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All</option><option value="PAID">Paid</option><option value="REJECTED">Rejected</option><option value="CANCELLED">Cancelled</option><option value="DECLINED">Declined</option>
+              <option value="">{tt('All')}</option><option value="PAID">{tt('Paid')}</option><option value="REJECTED">{tt('Rejected')}</option><option value="CANCELLED">{tt('Cancelled')}</option><option value="DECLINED">{tt('Declined')}</option>
             </Select>
           </Field>
         </div>
-        {q.isLoading ? <Loading /> : rows.length === 0 ? <Empty title="No payments" /> : (
+        {q.isLoading ? <Loading /> : rows.length === 0 ? <Empty title={tt('No payments')} /> : (
           <Table head={['Time', 'Order', 'Kiosk', 'Method', 'Amount', 'Received', 'Change', 'Reference', 'By', 'Status']}>
             {rows.map((r) => (
               <tr key={r.id}>

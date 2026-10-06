@@ -6,6 +6,7 @@ import { staffApi } from '../lib/api';
 import { money, time, elapsed } from '../lib/format';
 import { Empty, ErrorBox, Input, Loading, StatusBadge, Tabs } from '../components/ui';
 import { OrderDetail } from '../components/OrderDetail';
+import { tt } from '../lib/legacy-i18n';
 
 const TABS = [
   { id: 'WAITING_PAYMENT', label: 'Waiting Payment', tone: 'bg-amber-500 text-white' },
@@ -35,7 +36,7 @@ export function OrdersBoard() {
           <Tabs tabs={TABS.map((t) => ({ ...t, count: list.data?.tabCounts?.[t.id] }))} value={tab} onChange={(v) => { setTab(v); setQ(''); }} className="flex-1" />
           <div className="relative w-64">
             <Search className="absolute top-2.5 left-3 h-4 w-4 text-slate-400" />
-            <Input className="pl-9" placeholder="Search order #" value={q} inputMode="numeric" onChange={(e) => setQ(e.target.value.replace(/\D/g, '').slice(0, 5))} />
+            <Input className="pl-9" placeholder={tt('Search order #')} value={q} inputMode="numeric" onChange={(e) => setQ(e.target.value.replace(/\D/g, '').slice(0, 5))} />
           </div>
         </div>
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto rounded-2xl border bg-white">
@@ -44,7 +45,7 @@ export function OrdersBoard() {
           ) : list.error ? (
             <div className="p-4"><ErrorBox error={list.error} onRetry={() => list.refetch()} /></div>
           ) : orders.length === 0 ? (
-            <Empty title={q ? 'No order matches' : 'No orders in this tab'} />
+            <Empty title={q ? tt('No order matches') : tt('No orders in this tab')} />
           ) : (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500 uppercase">
@@ -60,7 +61,7 @@ export function OrdersBoard() {
                     <td className="px-3 py-3 text-lg font-black tracking-wider">#{o.order_number}</td>
                     <td className="px-3 py-3">{time(o.created_at)}</td>
                     <td className="px-3 py-3">{o.kiosk_code ?? o.source}</td>
-                    <td className="px-3 py-3">{o.order_type === 'DINE_IN' ? 'Dine in' : 'Take away'}</td>
+                    <td className="px-3 py-3">{o.order_type === 'DINE_IN' ? tt('Dine in') : tt('Take away')}</td>
                     <td className="px-3 py-3">{o.item_count}</td>
                     <td className="px-3 py-3 font-semibold">{money(o.total)}</td>
                     <td className="px-3 py-3">{o.payment_method ?? '—'}</td>
@@ -76,7 +77,7 @@ export function OrdersBoard() {
       {selected && (
         <aside className="scroll-thin w-[560px] shrink-0 overflow-y-auto border-l bg-white p-5">
           <div className="mb-2 flex justify-end">
-            <button className="text-sm text-slate-500 hover:text-slate-900" onClick={() => setSelected(null)}>Close ✕</button>
+            <button className="text-sm text-slate-500 hover:text-slate-900" onClick={() => setSelected(null)}>{tt('Close ✕')}</button>
           </div>
           <OrderDetail id={selected} compact />
         </aside>

@@ -5,6 +5,7 @@ import { staffApi, errorMessage } from '../lib/api';
 import { money } from '../lib/format';
 import { Button, Modal, toast } from './ui';
 import { useQuery } from '@tanstack/react-query';
+import { tt } from '../lib/legacy-i18n';
 
 /** Cash payment: quick amounts (Exact / 100 / 500 / 1000), keypad, automatic change calculation. */
 export function CashDialog({ order, onClose, onDone }: { order: any; onClose: () => void; onDone: () => void }) {
@@ -37,11 +38,11 @@ export function CashDialog({ order, onClose, onDone }: { order: any; onClose: ()
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-3">
           <div className="rounded-2xl bg-slate-900 p-4 text-white">
-            <div className="text-sm text-white/60">Amount due</div>
+            <div className="text-sm text-white/60">{tt('Amount due')}</div>
             <div className="text-4xl font-bold tabular-nums">{money(total)}</div>
           </div>
           <div className="rounded-2xl border p-4">
-            <div className="text-sm text-slate-500">Received</div>
+            <div className="text-sm text-slate-500">{tt('Received')}</div>
             <div className="text-3xl font-bold tabular-nums">{money(received)}</div>
           </div>
           <div className={clsx('rounded-2xl p-4', change >= 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-700')}>
@@ -52,7 +53,7 @@ export function CashDialog({ order, onClose, onDone }: { order: any; onClose: ()
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <Button size="lg" variant="dark" onClick={() => setInput(total.toFixed(2))}>
-              Exact
+              {tt('Exact')}
             </Button>
             {quick.map((q) => (
               <Button key={q} size="lg" variant="outline" onClick={() => setInput(String(q))}>
@@ -71,7 +72,7 @@ export function CashDialog({ order, onClose, onDone }: { order: any; onClose: ()
             </button>
           </div>
           <Button className="w-full" size="xl" variant="success" disabled={received < total} loading={busy} onClick={submit}>
-            Confirm payment
+            {tt('Confirm payment')}
           </Button>
         </div>
       </div>

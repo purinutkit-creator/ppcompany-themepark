@@ -13,6 +13,7 @@ import { useAuth } from '../lib/auth';
 import { useSocketEvent } from '../lib/socket';
 import { StaffShell, useStaffRt } from '../components/StaffShell';
 import { ConnectionDot, Loading, Select, toast } from '../components/ui';
+import { tt } from '../lib/legacy-i18n';
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const Orders = lazy(() => import('./Orders'));
@@ -194,7 +195,7 @@ function AdminLayout() {
               <div className="font-medium">{user?.name}</div>
               <div className="text-xs text-slate-500">{user?.role}</div>
             </div>
-            <button onClick={() => logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="Logout">
+            <button onClick={() => logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title={tt('Logout')}>
               <LogOut className="h-5 w-5" />
             </button>
           </div>

@@ -4,6 +4,7 @@ import { ShoppingCart } from 'lucide-react';
 import { applyTheme } from '../lib/theme';
 import { Button, Card, Field, Input, Loading, MediaInput, NumberInput, PageHeader, Select } from '../components/ui';
 import { useSettings, useSaveSetting } from './hooks';
+import { tt } from '../lib/legacy-i18n';
 
 const COLORS: [string, string][] = [['primary', 'Primary'], ['secondary', 'Secondary'], ['accent', 'Accent'], ['background', 'Background'], ['surface', 'Card / surface'], ['buttonColor', 'Button'], ['buttonText', 'Button text'], ['text', 'Text']];
 const PRESETS: Record<string, any> = {
@@ -26,9 +27,9 @@ export default function Theme() {
   const set = (k: string, v: any) => setT({ ...t, [k]: v });
   return (
     <div>
-      <PageHeader title="Theme" sub="Brand colors, radius, logo and welcome media — live preview, applied to every kiosk instantly on save" actions={<Button onClick={() => save.mutate({ key: 'theme', value: t })} loading={save.isPending}>Save & apply</Button>} />
+      <PageHeader title={tt('Theme')} sub={tt('Brand colors, radius, logo and welcome media — live preview, applied to every kiosk instantly on save')} actions={<Button onClick={() => save.mutate({ key: 'theme', value: t })} loading={save.isPending}>{tt('Save & apply')}</Button>} />
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-        <Card title="Settings">
+        <Card title={tt('Settings')}>
           <div className="mb-4 flex flex-wrap gap-2">
             {Object.entries(PRESETS).map(([n, p]) => (
               <button key={n} onClick={() => setT({ ...t, ...p })} className="flex items-center gap-2 rounded-full border px-3 py-1 text-xs hover:bg-slate-50">
@@ -45,17 +46,17 @@ export default function Theme() {
                 </div>
               </Field>
             ))}
-            <Field label="Corner radius (px)"><NumberInput value={t.radius} onChange={(v) => set('radius', v ?? 16)} min={0} max={40} /></Field>
-            <Field label="Product card style"><Select value={t.cardStyle} onChange={(e) => set('cardStyle', e.target.value)}><option value="ELEVATED">Elevated</option><option value="FLAT">Flat</option><option value="OUTLINE">Outline</option></Select></Field>
+            <Field label={tt('Corner radius (px)')}><NumberInput value={t.radius} onChange={(v) => set('radius', v ?? 16)} min={0} max={40} /></Field>
+            <Field label={tt('Product card style')}><Select value={t.cardStyle} onChange={(e) => set('cardStyle', e.target.value)}><option value="ELEVATED">{tt('Elevated')}</option><option value="FLAT">{tt('Flat')}</option><option value="OUTLINE">{tt('Outline')}</option></Select></Field>
           </div>
           <div className="mt-4 space-y-4">
-            <MediaInput label="Logo" value={t.logoUrl} onChange={(v) => set('logoUrl', v)} />
-            <MediaInput label="Welcome image" value={t.welcomeImageUrl} onChange={(v) => set('welcomeImageUrl', v)} />
-            <MediaInput label="Welcome video (mp4/webm)" kind="video" value={t.welcomeVideoUrl} onChange={(v) => set('welcomeVideoUrl', v)} />
-            <p className="text-xs text-slate-500">Fonts are managed in Admin → Fonts.</p>
+            <MediaInput label={tt('Logo')} value={t.logoUrl} onChange={(v) => set('logoUrl', v)} />
+            <MediaInput label={tt('Welcome image')} value={t.welcomeImageUrl} onChange={(v) => set('welcomeImageUrl', v)} />
+            <MediaInput label={tt('Welcome video (mp4/webm)')} kind="video" value={t.welcomeVideoUrl} onChange={(v) => set('welcomeVideoUrl', v)} />
+            <p className="text-xs text-slate-500">{tt('Fonts are managed in Admin → Fonts.')}</p>
           </div>
         </Card>
-        <Card title="Live preview — kiosk">
+        <Card title={tt('Live preview — kiosk')}>
           <div ref={preview} className="overflow-hidden rounded-2xl border" style={{ background: 'var(--brand-bg)', color: 'var(--brand-text)', fontFamily: 'var(--font-app)' }}>
             <div className="flex items-center justify-between px-5 py-3" style={{ background: 'var(--brand-surface)' }}>
               <div className="flex items-center gap-2 font-bold">{t.logoUrl ? <img src={t.logoUrl} className="h-8" alt="" /> : <span className="h-8 w-8 rounded-lg" style={{ background: 'var(--brand-primary)' }} />} Krua Hub</div>
@@ -88,7 +89,7 @@ export default function Theme() {
             <div className="m-4 flex items-center gap-3 p-3 text-white" style={{ background: 'var(--brand-secondary)', borderRadius: 'var(--brand-radius)' }}>
               <ShoppingCart className="h-6 w-6" />
               <span className="flex-1 font-bold">฿263.00</span>
-              <span className="px-5 py-2 font-bold" style={{ background: 'var(--brand-button)', color: 'var(--brand-button-text)', borderRadius: 'var(--brand-radius)' }}>View cart →</span>
+              <span className="px-5 py-2 font-bold" style={{ background: 'var(--brand-button)', color: 'var(--brand-button-text)', borderRadius: 'var(--brand-radius)' }}>{tt('View cart →')}</span>
             </div>
             <div className="m-4 mt-0 h-2 rounded" style={{ background: 'var(--brand-accent)' }} />
           </div>

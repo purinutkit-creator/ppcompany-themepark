@@ -3,6 +3,7 @@ import { staffApi, errorMessage } from '../lib/api';
 import { KIOSK_STRINGS, type KioskKey } from '../lib/i18n';
 import { Badge, Button, Card, Input, Loading, NumberInput, PageHeader, Toggle, toast } from '../components/ui';
 import { useList } from './hooks';
+import { tt } from '../lib/legacy-i18n';
 
 export default function Languages() {
   const list = useList('languages', '/settings/languages');
@@ -17,7 +18,7 @@ export default function Languages() {
       for (const l of [...rows].sort((a, b) => Number(b.is_default) - Number(a.is_default))) {
         await staffApi(`/settings/languages/${l.code}`, { method: 'PUT', body: { enabled: l.enabled, is_default: l.is_default, sort: l.sort, name: l.name, native_name: l.native_name, flag: l.flag, overrides: l.overrides ?? {} } });
       }
-      toast.success('Languages saved', 'Kiosks refresh texts immediately');
+      toast.success(tt('Languages saved'), 'Kiosks refresh texts immediately');
       void list.refetch();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -26,23 +27,23 @@ export default function Languages() {
   const keys = (Object.keys(KIOSK_STRINGS) as KioskKey[]).filter((k) => !filter || k.toLowerCase().includes(filter.toLowerCase()) || Object.values(KIOSK_STRINGS[k]).some((v) => v.toLowerCase().includes(filter.toLowerCase())));
   return (
     <div>
-      <PageHeader title="Languages" sub="ไทย · English · 中文 — enable/disable, default language and customer-facing text overrides. Kiosk default language is set per kiosk." actions={<Button onClick={saveAll}>Save</Button>} />
+      <PageHeader title={tt('Languages')} sub={tt('ไทย · English · 中文 — enable/disable, default language and customer-facing text overrides. Kiosk default language is set per kiosk.')} actions={<Button onClick={saveAll}>{tt('Save')}</Button>} />
       <div className="grid gap-4 md:grid-cols-3">
         {rows.map((l) => (
-          <Card key={l.code} title={<span className="text-lg">{l.flag} {l.native_name} <span className="text-sm text-slate-500">({l.code})</span></span>} actions={l.is_default && <Badge className="bg-primary text-white">Default</Badge>}>
+          <Card key={l.code} title={<span className="text-lg">{l.flag} {l.native_name} <span className="text-sm text-slate-500">({l.code})</span></span>} actions={l.is_default && <Badge className="bg-primary text-white">{tt('Default')}</Badge>}>
             <div className="space-y-3">
-              <Toggle checked={l.enabled} disabled={l.is_default} onChange={(v) => update(l.code, { enabled: v })} label="Enabled on kiosks" />
-              <Toggle checked={l.is_default} onChange={(v) => v && setRows((r) => r.map((x) => ({ ...x, is_default: x.code === l.code, enabled: x.code === l.code ? true : x.enabled })))} label="System default" />
-              <div className="flex items-center gap-2 text-sm">Order <div className="w-20"><NumberInput value={l.sort} onChange={(v) => update(l.code, { sort: v ?? 0 })} /></div></div>
+              <Toggle checked={l.enabled} disabled={l.is_default} onChange={(v) => update(l.code, { enabled: v })} label={tt('Enabled on kiosks')} />
+              <Toggle checked={l.is_default} onChange={(v) => v && setRows((r) => r.map((x) => ({ ...x, is_default: x.code === l.code, enabled: x.code === l.code ? true : x.enabled })))} label={tt('System default')} />
+              <div className="flex items-center gap-2 text-sm">{tt('Order')} <div className="w-20"><NumberInput value={l.sort} onChange={(v) => update(l.code, { sort: v ?? 0 })} /></div></div>
               <div className="text-xs text-slate-500">{Object.keys(l.overrides ?? {}).length} text overrides</div>
             </div>
           </Card>
         ))}
       </div>
-      <Card className="mt-5" title="Customer-facing text" actions={<Input placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-60" />} padded={false}>
+      <Card className="mt-5" title={tt('Customer-facing text')} actions={<Input placeholder={tt('Filter…')} value={filter} onChange={(e) => setFilter(e.target.value)} className="w-60" />} padded={false}>
         <div className="scroll-thin max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500 uppercase"><tr><th className="px-3 py-2 text-left">Key</th>{rows.map((l) => <th key={l.code} className="px-3 py-2 text-left">{l.flag} {l.code}</th>)}</tr></thead>
+            <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500 uppercase"><tr><th className="px-3 py-2 text-left">{tt('Key')}</th>{rows.map((l) => <th key={l.code} className="px-3 py-2 text-left">{l.flag} {l.code}</th>)}</tr></thead>
             <tbody>
               {keys.map((k) => (
                 <tr key={k} className="border-b">
@@ -62,7 +63,7 @@ export default function Languages() {
           </table>
         </div>
       </Card>
-      <p className="mt-3 text-xs text-slate-500">Product, category, modifier and promotion names are translated in their own editors (3 languages each).</p>
+      <p className="mt-3 text-xs text-slate-500">{tt('Product, category, modifier and promotion names are translated in their own editors (3 languages each).')}</p>
     </div>
   );
 }

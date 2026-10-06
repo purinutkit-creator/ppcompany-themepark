@@ -3,7 +3,37 @@ import clsx from 'clsx';
 import { Loader2, X, Upload, ImageOff, Inbox } from 'lucide-react';
 import { create } from 'zustand';
 import { ApiError, errorMessage, uploadFile } from '../lib/api';
-import { STATUS_COLORS, prettyStatus } from '../lib/format';
+import { STATUS_COLORS } from '../lib/format';
+import { useUiLang } from '../lib/lang';
+import { tt, ttStatus } from '../lib/legacy-i18n';
+
+/** Translate plain English strings passed to shared components (other nodes pass through). */
+const tx = <T,>(v: T): T => (typeof v === 'string' ? (tt(v) as T) : v);
+
+/** Shared component texts in the current UI language (th / en / zh). */
+const UI_TEXT = {
+  loading: { th: 'กำลังโหลด…', en: 'Loading…', zh: '加载中…' },
+  empty: { th: 'ยังไม่มีข้อมูล', en: 'Nothing here yet', zh: '暂无数据' },
+  retry: { th: 'ลองใหม่', en: 'Retry', zh: '重试' },
+  upload: { th: 'อัปโหลด', en: 'Upload', zh: '上传' },
+  clear: { th: 'ล้าง', en: 'Clear', zh: '清除' },
+  cancel: { th: 'ยกเลิก', en: 'Cancel', zh: '取消' },
+  confirm: { th: 'ยืนยัน', en: 'Confirm', zh: '确认' },
+  ok: { th: 'ตกลง', en: 'OK', zh: '确定' },
+  approve: { th: 'อนุมัติ', en: 'Approve', zh: '批准' },
+  managerTitle: { th: 'ต้องได้รับอนุมัติจากผู้จัดการ', en: 'Manager approval required', zh: '需要经理批准' },
+  managerHint: { th: 'ต้องให้ผู้จัดการยืนยันด้วยรหัสพนักงานและ PIN', en: 'A manager must confirm with their employee code and PIN', zh: '需经理输入员工编号和PIN确认' },
+  managerCode: { th: 'รหัสพนักงานผู้จัดการ', en: 'Manager employee code', zh: '经理员工编号' },
+  managerInvalid: { th: 'รหัสผู้จัดการหรือ PIN ไม่ถูกต้อง', en: 'Invalid manager code or PIN', zh: '经理编号或PIN错误' },
+} as const;
+type UiKey = keyof typeof UI_TEXT;
+/** Hook form (re-renders on language change). */
+function useUiText() {
+  const lang = useUiLang((s) => s.lang);
+  return (k: UiKey) => UI_TEXT[k][lang];
+}
+/** Non-React form (toasts / helpers). */
+const uiText = (k: UiKey) => UI_TEXT[k][useUiLang.getState().lang];
 
 /* ------------------------------------------------------------------ Buttons */
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'outline' | 'dark';
@@ -48,34 +78,39 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={clsx('animate-spin text-slate-400', className ?? 'h-6 w-6')} />;
 }
 
-export function Loading({ label = 'Loading…' }: { label?: string }) {
+export function Loading({ label }: { label?: string }) {
+  const u = useUiText();
+  label = label ?? u('loading');
   return (
     <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-slate-500">
       <Spinner className="h-8 w-8" />
-      <span className="text-sm">{label}</span>
+      <span className="text-sm">{tx(label)}</span>
     </div>
   );
 }
 
-export function Empty({ title = 'Nothing here yet', sub, icon, action }: { title?: string; sub?: string; icon?: ReactNode; action?: ReactNode }) {
+export function Empty({ title, sub, icon, action }: { title?: string; sub?: string; icon?: ReactNode; action?: ReactNode }) {
+  const u = useUiText();
+  title = title ?? u('empty');
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-14 text-center text-slate-500">
       <div className="mb-1 rounded-full bg-slate-100 p-4 text-slate-400">{icon ?? <Inbox className="h-7 w-7" />}</div>
-      <div className="font-medium text-slate-700">{title}</div>
-      {sub && <div className="max-w-sm text-sm">{sub}</div>}
+      <div className="font-medium text-slate-700">{tx(title)}</div>
+      {sub && <div className="max-w-sm text-sm">{tx(sub)}</div>}
       {action}
     </div>
   );
 }
 
 export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const u = useUiText();
   if (!error) return null;
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
       <span>{errorMessage(error)}</span>
       {onRetry && (
         <Button size="sm" variant="outline" onClick={onRetry}>
-          Retry
+          {u('retry')}
         </Button>
       )}
     </div>
@@ -88,7 +123,7 @@ export function Badge({ children, className }: { children: ReactNode; className?
 }
 export function StatusBadge({ status, className }: { status: string | null | undefined; className?: string }) {
   if (!status) return null;
-  return <Badge className={clsx(STATUS_COLORS[status] ?? 'bg-slate-100 text-slate-700', className)}>{prettyStatus(status)}</Badge>;
+  return <Badge className={clsx(STATUS_COLORS[status] ?? 'bg-slate-100 text-slate-700', className)}>{ttStatus(status)}</Badge>;
 }
 
 /* ------------------------------------------------------------------ Card / Page */
@@ -97,7 +132,7 @@ export function Card({ children, className, title, actions, padded = true }: { c
     <div className={clsx('rounded-2xl border border-slate-200 bg-white shadow-sm', className)}>
       {(title || actions) && (
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
-          <div className="font-semibold text-slate-800">{title}</div>
+          <div className="font-semibold text-slate-800">{tx(title)}</div>
           <div className="flex items-center gap-2">{actions}</div>
         </div>
       )}
@@ -110,8 +145,8 @@ export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: Re
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        {sub && <p className="mt-0.5 text-sm text-slate-500">{sub}</p>}
+        <h1 className="text-2xl font-bold text-slate-900">{tx(title)}</h1>
+        {sub && <p className="mt-0.5 text-sm text-slate-500">{tx(sub)}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2">{actions}</div>
     </div>
@@ -123,7 +158,7 @@ export function Stat({ label, value, sub, icon, tone = 'slate' }: { label: strin
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-slate-500">{label}</div>
+        <div className="text-sm text-slate-500">{tx(label)}</div>
         {icon && <div className={clsx('rounded-xl p-2', tones[tone])}>{icon}</div>}
       </div>
       <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{value}</div>
@@ -142,7 +177,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, className }: { t
           onClick={() => onChange(t.id)}
           className={clsx('press flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium', value === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900')}
         >
-          {t.label}
+          {tx(t.label)}
           {t.count != null && t.count > 0 && <span className={clsx('min-w-5 rounded-full px-1.5 text-xs font-bold', t.tone ?? 'bg-slate-200 text-slate-700')}>{t.count}</span>}
         </button>
       ))}
@@ -165,7 +200,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md', dis
       <div className={clsx('anim-pop flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl', w)}>
         {title && (
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <div className="text-lg font-semibold text-slate-900">{title}</div>
+            <div className="text-lg font-semibold text-slate-900">{tx(title)}</div>
             {dismissable && (
               <button onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Close">
                 <X className="h-5 w-5" />
@@ -184,9 +219,9 @@ export function Modal({ open, onClose, title, children, footer, size = 'md', dis
 export function Field({ label, hint, error, children, className }: { label?: ReactNode; hint?: ReactNode; error?: string | null; children: ReactNode; className?: string }) {
   return (
     <label className={clsx('block', className)}>
-      {label && <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>}
+      {label && <div className="mb-1 text-sm font-medium text-slate-700">{tx(label)}</div>}
       {children}
-      {hint && !error && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
+      {hint && !error && <div className="mt-1 text-xs text-slate-500">{tx(hint)}</div>}
       {error && <div className="mt-1 text-xs text-rose-600">{error}</div>}
     </label>
   );
@@ -221,7 +256,7 @@ export function Toggle({ checked, onChange, label, disabled }: { checked: boolea
       >
         <span className={clsx('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', checked ? 'left-5.5' : 'left-0.5')} />
       </button>
-      {label && <span className="text-sm text-slate-700">{label}</span>}
+      {label && <span className="text-sm text-slate-700">{tx(label)}</span>}
     </label>
   );
 }
@@ -229,7 +264,7 @@ export function Checkbox({ checked, onChange, label }: { checked: boolean; onCha
   return (
     <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700 select-none">
       <input type="checkbox" className="h-4 w-4 accent-[var(--brand-primary)]" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      {label}
+      {tx(label)}
     </label>
   );
 }
@@ -240,7 +275,7 @@ export function I18nInput({ value, onChange, multiline, label, required }: { val
   const langs: [string, string][] = [['th', '🇹🇭 ไทย'], ['en', '🇬🇧 English'], ['zh', '🇨🇳 中文']];
   return (
     <div>
-      {label && <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>}
+      {label && <div className="mb-1 text-sm font-medium text-slate-700">{tx(label)}</div>}
       <div className="grid gap-2 md:grid-cols-3">
         {langs.map(([l, name]) => (
           <div key={l}>
@@ -264,7 +299,7 @@ export function MediaInput({ value, onChange, kind = 'image', label }: { value: 
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div>
-      {label && <div className="mb-1 text-sm font-medium text-slate-700">{label}</div>}
+      {label && <div className="mb-1 text-sm font-medium text-slate-700">{tx(label)}</div>}
       <div className="flex items-start gap-3">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
           {value ? kind === 'video' ? <video src={value} className="h-full w-full object-cover" muted /> : <img src={value} className="h-full w-full object-cover" alt="" /> : <ImageOff className="h-6 w-6 text-slate-300" />}
@@ -293,11 +328,11 @@ export function MediaInput({ value, onChange, kind = 'image', label }: { value: 
               }}
             />
             <Button type="button" size="sm" variant="outline" loading={busy} icon={<Upload className="h-4 w-4" />} onClick={() => ref.current?.click()}>
-              Upload
+              {uiText('upload')}
             </Button>
             {value && (
               <Button type="button" size="sm" variant="ghost" onClick={() => onChange('')}>
-                Clear
+                {uiText('clear')}
               </Button>
             )}
           </div>
@@ -337,8 +372,8 @@ export function Toaster() {
     <div className="pointer-events-none fixed right-4 bottom-4 z-[100] flex w-80 flex-col gap-2 no-print">
       {items.map((t) => (
         <div key={t.id} className={clsx('anim-up pointer-events-auto rounded-xl border px-4 py-3 shadow-lg', tone[t.tone])} onClick={() => remove(t.id)}>
-          <div className="text-sm font-semibold text-slate-900">{t.title}</div>
-          {t.body && <div className="mt-0.5 text-xs text-slate-600">{t.body}</div>}
+          <div className="text-sm font-semibold text-slate-900">{tx(t.title)}</div>
+          {t.body && <div className="mt-0.5 text-xs text-slate-600">{tx(t.body)}</div>}
         </div>
       ))}
     </div>
@@ -381,7 +416,7 @@ export async function withManagerApproval<T>(title: string, run: (approval: { ma
       return await run(approval);
     } catch (e) {
       if (e instanceof ApiError && (e.code === 'MANAGER_PIN_REQUIRED' || e.code === 'MANAGER_PIN_INVALID')) {
-        if (e.code === 'MANAGER_PIN_INVALID') toast.error('Invalid manager code or PIN');
+        if (e.code === 'MANAGER_PIN_INVALID') toast.error(uiText('managerInvalid'));
         const a = await askManager(title);
         if (!a) return null;
         approval = a;
@@ -394,6 +429,7 @@ export async function withManagerApproval<T>(title: string, run: (approval: { ma
 }
 
 export function DialogHost() {
+  const u = useUiText();
   const { s, close } = useDialog();
   const [text, setText] = useState('');
   const [code, setCode] = useState('');
@@ -409,22 +445,22 @@ export function DialogHost() {
   };
   if (s.kind === 'confirm')
     return (
-      <Modal open onClose={() => done(false)} title={s.title} size="sm" footer={<><Button variant="ghost" onClick={() => done(false)}>Cancel</Button><Button variant={s.danger ? 'danger' : 'primary'} onClick={() => done(true)} autoFocus>Confirm</Button></>}>
-        <div className="text-sm text-slate-600">{s.body}</div>
+      <Modal open onClose={() => done(false)} title={tx(s.title)} size="sm" footer={<><Button variant="ghost" onClick={() => done(false)}>{u('cancel')}</Button><Button variant={s.danger ? 'danger' : 'primary'} onClick={() => done(true)} autoFocus>{u('confirm')}</Button></>}>
+        <div className="text-sm text-slate-600">{tx(s.body)}</div>
       </Modal>
     );
   if (s.kind === 'prompt')
     return (
-      <Modal open onClose={() => done(null)} title={s.title} size="sm" footer={<><Button variant="ghost" onClick={() => done(null)}>Cancel</Button><Button disabled={!text.trim()} onClick={() => done(text.trim())}>OK</Button></>}>
-        {s.body && <div className="mb-3 text-sm text-slate-600">{s.body}</div>}
-        <Textarea autoFocus value={text} placeholder={s.placeholder} onChange={(e) => setText(e.target.value)} />
+      <Modal open onClose={() => done(null)} title={tx(s.title)} size="sm" footer={<><Button variant="ghost" onClick={() => done(null)}>{u('cancel')}</Button><Button disabled={!text.trim()} onClick={() => done(text.trim())}>{u('ok')}</Button></>}>
+        {s.body && <div className="mb-3 text-sm text-slate-600">{tx(s.body)}</div>}
+        <Textarea autoFocus value={text} placeholder={tx(s.placeholder)} onChange={(e) => setText(e.target.value)} />
       </Modal>
     );
   return (
-    <Modal open onClose={() => done(null)} title="Manager approval required" size="sm" footer={<><Button variant="ghost" onClick={() => done(null)}>Cancel</Button><Button disabled={!code || pin.length < 4} onClick={() => done({ managerCode: code.toUpperCase(), managerPin: pin })}>Approve</Button></>}>
-      <div className="mb-3 text-sm text-slate-600">{s.title} — ต้องให้ผู้จัดการยืนยันด้วยรหัสพนักงานและ PIN</div>
+    <Modal open onClose={() => done(null)} title={u('managerTitle')} size="sm" footer={<><Button variant="ghost" onClick={() => done(null)}>{u('cancel')}</Button><Button disabled={!code || pin.length < 4} onClick={() => done({ managerCode: code.toUpperCase(), managerPin: pin })}>{u('approve')}</Button></>}>
+      <div className="mb-3 text-sm text-slate-600">{tx(s.title)} — {u('managerHint')}</div>
       <div className="space-y-3">
-        <Field label="Manager employee code">
+        <Field label={u('managerCode')}>
           <Input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="MGR001" />
         </Field>
         <Field label="PIN">
@@ -444,7 +480,7 @@ export function Table({ head, children, className }: { head: ReactNode[]; childr
           <tr className="border-b border-slate-200 text-xs tracking-wide text-slate-500 uppercase">
             {head.map((h, i) => (
               <th key={i} className="px-3 py-2.5 font-semibold whitespace-nowrap">
-                {h}
+                {tx(h)}
               </th>
             ))}
           </tr>
@@ -464,7 +500,7 @@ export function ConnectionDot({ connected, label }: { connected: boolean; label?
   return (
     <span className={clsx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium', connected ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
       <span className={clsx('h-2 w-2 rounded-full', connected ? 'bg-emerald-500' : 'animate-pulse bg-rose-500')} />
-      {label ?? (connected ? 'Live' : 'Reconnecting…')}
+      {tx(label) ?? tt(connected ? 'Live' : 'Reconnecting…')}
     </span>
   );
 }
