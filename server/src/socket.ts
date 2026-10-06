@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { Server } from 'socket.io';
 import { EVENTS, rooms } from '@kiosk/shared';
 import { one, query } from './db/pool';
-import { agentFromToken, kioskFromToken, loadStaff, type JwtPayload } from './lib/auth';
+import { agentFromToken, deviceFromToken, kioskFromToken, loadStaff, memberFromJwt, type JwtPayload } from './lib/auth';
+import { markDeviceSeen } from './services/park/devices';
 import { attachIo, publish } from './lib/realtime';
 import { config } from './config';
 
@@ -26,8 +27,50 @@ export function setupSocket(app: FastifyInstance) {
       const a = socket.handshake.auth ?? {};
       const deviceId = typeof a.deviceId === 'string' && /^[A-Za-z0-9_-]{8,100}$/.test(a.deviceId) ? a.deviceId : null;
       socket.data.deviceId = deviceId;
+      if (a.memberToken) {
+        const m = await memberFromJwt(app.jwt.verify<JwtPayload>(a.memberToken));
+        if (!m) return next(new Error('UNAUTHORIZED'));
+        socket.data.kind = 'member';
+        socket.data.accountId = m.accountId;
+        socket.join([rooms.account(m.accountId), rooms.global]);
+        return next();
+      }
+      if (a.bookingNo && a.bookingToken) {
+        const b = await one<any>(`SELECT id, access_token, branch_id, sale_id FROM bookings WHERE booking_no=$1`, [String(a.bookingNo).toUpperCase()]);
+        if (!b || b.access_token !== a.bookingToken) return next(new Error('UNAUTHORIZED'));
+        socket.data.kind = 'booking';
+        socket.join([rooms.booking(b.id), rooms.sale(b.sale_id), rooms.global]);
+        return next();
+      }
+      if (a.deviceToken) {
+        const dev = await deviceFromToken(a.deviceToken);
+        if (!dev) return next(new Error('UNAUTHORIZED'));
+        socket.data.kind = 'pdevice';
+        socket.data.parkDeviceId = dev.id;
+        socket.data.branchId = dev.branch_id;
+        socket.data.deviceType = dev.type;
+        const r = [rooms.parkDevice(dev.id), rooms.branchPublic(dev.branch_id), rooms.global, rooms.branchPrinters(dev.branch_id)];
+        const gates = await query<any>(`SELECT gate_id FROM gate_devices WHERE device_id=$1`, [dev.id]);
+        for (const g of gates) r.push(rooms.gate(g.gate_id));
+        const sps = await query<any>(`SELECT id, ride_id FROM ride_scan_points WHERE device_id=$1`, [dev.id]);
+        for (const sp of sps) r.push(rooms.scanPoint(sp.id), rooms.ride(sp.ride_id));
+        if (['POS', 'COUNTER'].includes(dev.type)) r.push(rooms.branchCounter(dev.branch_id));
+        if (dev.type === 'LOCKER_CONTROLLER') r.push(rooms.locker(dev.branch_id));
+        if (dev.type === 'GATE_DISPLAY' || dev.type === 'GATE_SCANNER') r.push(rooms.branchGates(dev.branch_id));
+        socket.join(r);
+        return next();
+      }
+      if (a.display === 'park' && typeof a.branchCode === 'string') {
+        const b = await one<any>(`SELECT id FROM branches WHERE code=$1 AND is_active`, [a.branchCode.toUpperCase()]);
+        if (!b) return next(new Error('BRANCH_NOT_FOUND'));
+        socket.data.kind = 'display';
+        socket.data.branchId = b.id;
+        socket.join([rooms.branchPublic(b.id), rooms.global]);
+        return next();
+      }
       if (a.token) {
         const payload = app.jwt.verify<JwtPayload>(a.token);
+        if (payload.typ === 'member') return next(new Error('UNAUTHORIZED'));
         const staff = await loadStaff(payload.sub, payload.tv ?? 0);
         if (!staff) return next(new Error('UNAUTHORIZED'));
         let branchId = staff.branchId;
@@ -35,12 +78,18 @@ export function setupSocket(app: FastifyInstance) {
         if (!branchId) return next(new Error('BRANCH_REQUIRED'));
         socket.data.kind = 'staff';
         socket.data.staff = { id: staff.id, permissions: [...staff.permissions] };
+        socket.data.kind = 'staff';
         socket.data.branchId = branchId;
         const p = staff.permissions;
         const r: string[] = [rooms.global];
         if (p.has('orders.view') || p.has('payments.verify')) r.push(rooms.branchCashier(branchId));
         if (p.has('kitchen.view')) r.push(rooms.branchKitchen(branchId), rooms.branchQueue(branchId));
         if (p.has('dashboard.view') || p.has('printers.manage')) r.push(rooms.branchAdmin(branchId));
+        if (p.has('gates.view') || p.has('gates.operate')) r.push(rooms.branchGates(branchId));
+        if (p.has('rides.view') || p.has('rides.operate')) r.push(rooms.branchRides(branchId));
+        if (p.has('tickets.sell') || p.has('pos.sell') || p.has('payments.verify') || p.has('wallet.topup')) r.push(rooms.branchCounter(branchId));
+        if (p.has('lockers.operate')) r.push(rooms.locker(branchId));
+        r.push(rooms.branchPublic(branchId));
         if (deviceId) r.push(rooms.branchPrinters(branchId), rooms.device(deviceId));
         socket.join(r);
         return next();
@@ -80,6 +129,36 @@ export function setupSocket(app: FastifyInstance) {
 
   io.on('connection', async (socket) => {
     const d = socket.data;
+    // Screens watching a specific card / sale / gate / ride (POS card profile, ride scanner awaiting payment…).
+    socket.on('watch', async (w: { kind?: string; id?: string } = {}, ack?: (r: unknown) => void) => {
+      try {
+        const id = typeof w.id === 'string' && /^[0-9a-f-]{36}$/i.test(w.id) ? w.id : null;
+        if (!id || !['account', 'sale', 'gate', 'ride', 'scanpoint'].includes(String(w.kind))) return ack?.({ ok: false });
+        const perms: string[] = d.staff?.permissions ?? [];
+        const isStaff = d.kind === 'staff';
+        const isDevice = d.kind === 'pdevice' || d.kind === 'kiosk';
+        if (!isStaff && !isDevice) return ack?.({ ok: false });
+        if (w.kind === 'account' && isStaff && !perms.some((p: string) => ['cards.view', 'pos.sell', 'tickets.sell', 'wallet.view', 'members.view'].includes(p))) return ack?.({ ok: false });
+        if (w.kind === 'account' && isDevice) {
+          const own = await one(`SELECT 1 FROM customer_accounts WHERE id=$1 AND (branch_id=$2 OR branch_id IS NULL OR kind='MEMBER')`, [id, d.branchId]);
+          if (!own) return ack?.({ ok: false });
+        }
+        const room = w.kind === 'account' ? rooms.account(id) : w.kind === 'sale' ? rooms.sale(id) : w.kind === 'gate' ? rooms.gate(id) : w.kind === 'ride' ? rooms.ride(id) : rooms.scanPoint(id);
+        await socket.join(room);
+        ack?.({ ok: true });
+      } catch {
+        ack?.({ ok: false });
+      }
+    });
+    socket.on('unwatch', (w: { kind?: string; id?: string } = {}) => {
+      if (typeof w.id !== 'string') return;
+      const room = w.kind === 'account' ? rooms.account(w.id) : w.kind === 'sale' ? rooms.sale(w.id) : w.kind === 'gate' ? rooms.gate(w.id) : w.kind === 'ride' ? rooms.ride(w.id) : rooms.scanPoint(w.id);
+      void socket.leave(room);
+    });
+    if (d.kind === 'pdevice') {
+      await markDeviceSeen(d.parkDeviceId, socket.handshake.address ?? null).catch(() => {});
+      socket.on('heartbeat', (info: { version?: string } = {}) => void markDeviceSeen(d.parkDeviceId, socket.handshake.address ?? null, typeof info?.version === 'string' ? info.version.slice(0, 40) : null).catch(() => {}));
+    }
     if (d.kind === 'kiosk') {
       await query(`UPDATE kiosks SET status='ONLINE', last_seen_at=now() WHERE id=$1`, [d.kioskId]);
       await publish(rooms.branchAdmin(d.branchId), EVENTS.KIOSK_STATUS, { kioskId: d.kioskId, status: 'ONLINE' });

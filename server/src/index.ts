@@ -8,6 +8,13 @@ import { setupSocket } from './socket';
 import { autoCompleteReady, expireStaleOrders } from './services/orders';
 import { printMaintenance } from './services/printing';
 import { query } from './db/pool';
+import { expireSales, reconcileFulfilment } from './services/park/sales';
+import { bookingMaintenance } from './services/park/bookings';
+import { endOfDayPresence, gateMaintenance } from './services/park/gates';
+import { queueMaintenance } from './services/park/queues';
+import { lockerMaintenance } from './services/park/lockers';
+import { membershipMaintenance } from './services/park/members';
+import { deviceMaintenance } from './services/park/devices';
 
 async function main() {
   if (process.env.AUTO_MIGRATE !== 'false') await migrate((m) => console.log(m));
@@ -16,7 +23,20 @@ async function main() {
   const io = setupSocket(app);
 
   // Background maintenance (safe to run on every instance: all operations are idempotent / row-locked).
+  const safe = (fn: () => Promise<unknown>) => () => void fn().catch((e) => app.log.error(e));
   const timers = [
+    // Theme park background jobs (row-locked / idempotent → safe on every instance).
+    setInterval(safe(gateMaintenance), 2_000),
+    setInterval(safe(expireSales), 30_000),
+    setInterval(safe(reconcileFulfilment), 60_000),
+    setInterval(safe(queueMaintenance), 30_000),
+    setInterval(safe(deviceMaintenance), 30_000),
+    setInterval(safe(async () => {
+      await bookingMaintenance();
+      await endOfDayPresence();
+      await lockerMaintenance();
+    }), 5 * 60_000),
+    setInterval(safe(membershipMaintenance), 60 * 60_000),
     setInterval(() => expireStaleOrders().catch((e) => app.log.error(e)), 30_000),
     setInterval(() => printMaintenance().catch((e) => app.log.error(e)), 5_000),
     setInterval(async () => {
@@ -33,6 +53,7 @@ async function main() {
   ];
 
   await app.listen({ port: config.port, host: config.host });
+  void membershipMaintenance().catch(() => {});
 
   const shutdown = async () => {
     timers.forEach(clearInterval);

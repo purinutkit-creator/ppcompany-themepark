@@ -10,6 +10,8 @@ import { sendToKitchen } from './kitchen';
 import { createOrderPrintJobs } from './printing';
 import { getProvider, signWebhook, verifyWebhookSignature } from './providers';
 import { config } from '../config';
+import { announcePoints, computeEarn, pointsPost } from './park/points';
+import { announceWallet, walletPost } from './park/wallet';
 
 const OPEN_PAYMENT = ['PENDING', 'WAITING_VERIFICATION', 'WAITING_CASH', 'WAITING_CARD', 'PROCESSING'];
 const PAYABLE_STATUSES = ['CREATED', 'WAITING_PAYMENT', 'WAITING_CASH_PAYMENT', 'WAITING_CARD', 'WAITING_VERIFICATION'];
@@ -106,10 +108,13 @@ export async function confirmPaymentTx(c: Tx, p: ConfirmInput, out: Outbox): Pro
   const settings = await getSettings(c);
   await sendToKitchen(c, order, out);
   await createOrderPrintJobs(c, order, out, settings);
-  const promos = (order.applied_promotions as any[]) ?? [];
+  const promos = ((order.applied_promotions as any[]) ?? []).filter((x) => /^[0-9a-f-]{36}$/i.test(String(x.promotionId)));
   if (promos.length) {
     await query(`UPDATE promotions SET usage_count = usage_count + 1 WHERE id = ANY($1)`, [promos.map((x) => x.promotionId)], c);
   }
+  // Park members earn FOOD points on restaurant orders (points paid by wallet still earn; refunds reverse).
+  const fresh = await one<any>(`SELECT member_id, branch_id, order_number, total FROM orders WHERE id=$1`, [order.id], c);
+  if (fresh?.member_id) await earnOrderPoints(c, order.id, fresh, out);
 
   const kioskRoom = order.kiosk_id ? [rooms.kiosk(order.kiosk_id)] : [];
   out.add([...kioskRoom, rooms.branchCashier(order.branch_id), rooms.branchAdmin(order.branch_id)], EVENTS.PAYMENT_APPROVED, {
@@ -123,6 +128,15 @@ export async function confirmPaymentTx(c: Tx, p: ConfirmInput, out: Outbox): Pro
   });
   await broadcastOrder(out, order.id, c, EVENTS.ORDER_CONFIRMED);
   return { alreadyPaid: false, order };
+}
+
+async function earnOrderPoints(c: Tx, orderId: string, o: any, out: Outbox) {
+  const pts = await computeEarn(c, o.member_id, { FOOD: Number(o.total) });
+  if (pts <= 0) return;
+  await pointsPost(c, { memberId: o.member_id, type: 'EARN', points: pts, reference: `ORDER ${o.order_number}`, refType: 'ORDER', refId: orderId, branchId: o.branch_id, idempotencyKey: `earn:order:${orderId}` });
+  await query(`UPDATE orders SET points_earned=$2 WHERE id=$1`, [orderId, pts], c);
+  await query(`UPDATE members SET total_spend = total_spend + $2 WHERE id=$1`, [o.member_id, o.total], c);
+  await announcePoints(out, c, o.member_id);
 }
 
 export async function confirmPayment(p: ConfirmInput) {
@@ -302,6 +316,12 @@ export async function confirmCash(orderId: string, received: number, staff: { id
       { orderId, paymentId: pay?.id ?? null, method: 'CASH', provider: 'CASH', received, actor: { type: 'STAFF', id: staff.id, name: staff.name }, staffId: staff.id },
       out,
     );
+    // Cash drawer accounting: attach to the cashier's open shift (if any).
+    const shift = await one<any>(`SELECT id FROM shifts WHERE user_id=$1 AND status='OPEN'`, [staff.id], c);
+    if (shift && !res.alreadyPaid) {
+      await query(`UPDATE orders SET shift_id=$2 WHERE id=$1`, [orderId, shift.id], c);
+      await query(`INSERT INTO cash_movements (shift_id, type, amount, ref_type, ref_id, user_id) VALUES ($1,'CASH_ORDER',$2,'ORDER',$3,$4) ON CONFLICT DO NOTHING`, [shift.id, o.total, orderId, staff.id], c);
+    }
     return { ...res, change: Math.round((received - Number(o.total)) * 100) / 100 };
   });
   await out.flush();
@@ -355,12 +375,24 @@ export async function refundOrder(orderId: string, amount: number, reason: strin
     if (!['PAID', 'PARTIALLY_REFUNDED'].includes(o.payment_status)) throw conflict('ORDER_NOT_PAID', 'Only paid orders can be refunded');
     const remaining = Math.round((Number(o.total) - Number(o.refunded_amount)) * 100) / 100;
     if (amount <= 0 || amount > remaining + 1e-9) throw badRequest('INVALID_REFUND_AMOUNT', `Refundable amount is ${remaining}`);
-    const pay = await one<any>(`SELECT id, method FROM payments WHERE order_id=$1 AND status='PAID'`, [orderId], c);
+    const pay = await one<any>(`SELECT id, method, wallet_ledger_id FROM payments WHERE order_id=$1 AND status='PAID'`, [orderId], c);
+    let ledgerId: string | null = null;
+    if (pay?.method === 'WALLET' && pay.wallet_ledger_id) {
+      // Wallet payments are refunded back to the same wallet (ledger REFUND).
+      const led0 = await one<any>(`SELECT account_id FROM wallet_ledger WHERE id=$1`, [pay.wallet_ledger_id], c);
+      const led = await walletPost(c, { accountId: led0.account_id, type: 'REFUND', amount, branchId: o.branch_id, reference: `ORDER ${o.order_number}`, refType: 'ORDER', refId: orderId, staffId: staff.id, note: reason, idempotencyKey: `order-refund:${orderId}:${o.refunded_amount}:${amount}` });
+      ledgerId = led.entry.id;
+      await announceWallet(out, c, led0.account_id, o.branch_id, { reason: 'REFUND' });
+    }
     await query(
-      `INSERT INTO refunds (order_id, payment_id, amount, reason, method, created_by, approved_by) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [orderId, pay?.id ?? null, amount, reason, pay?.method ?? null, staff.id, approvedBy],
+      `INSERT INTO refunds (order_id, payment_id, amount, reason, method, created_by, approved_by, branch_id, refund_method, wallet_ledger_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [orderId, pay?.id ?? null, amount, reason, pay?.method ?? null, staff.id, approvedBy, o.branch_id, pay?.method === 'WALLET' ? 'WALLET' : pay?.method ?? null, ledgerId],
       c,
     );
+    if (o.member_id && Number(o.points_earned) > 0) {
+      const back = Math.floor((Number(o.points_earned) * amount) / Math.max(0.01, Number(o.total)));
+      if (back > 0) await pointsPost(c, { memberId: o.member_id, type: 'REVERSE', points: -back, reference: `ORDER ${o.order_number}`, refType: 'ORDER', refId: orderId, clamp: true, idempotencyKey: `unearn:order:${orderId}:${o.refunded_amount}:${amount}` });
+    }
     const full = Math.abs(amount - remaining) < 0.005;
     await query(
       `UPDATE orders SET refunded_amount = refunded_amount + $2, payment_status = $3, status = CASE WHEN $3='REFUNDED' THEN 'REFUNDED' ELSE status END,
@@ -402,7 +434,21 @@ export async function handleProviderWebhook(provider: string, rawBody: string, s
   if (!ins) return { duplicate: true };
   const d = body.data ?? {};
   const payment = await one<any>(`SELECT * FROM payments WHERE provider=$1 AND provider_txn_id=$2`, [provider, d.provider_txn_id]);
-  if (!payment) throw notFound('Payment');
+  if (!payment) {
+    // Park sale payment (tickets, top-up, membership, ride add-on…)?
+    const { handleSaleWebhookEvent } = await import('./park/providers');
+    let parkResult: unknown;
+    try {
+      parkResult = await handleSaleWebhookEvent(provider, body);
+    } catch (e) {
+      // Unexpected failure: forget the event so the provider's retry is processed (business errors stay recorded).
+      if (!(e instanceof AppError)) await query(`DELETE FROM payment_webhook_events WHERE provider=$1 AND event_id=$2`, [provider, eventId]);
+      throw e;
+    }
+    if (!parkResult) throw notFound('Payment');
+    await query(`UPDATE payment_webhook_events SET processed_at=now() WHERE provider=$1 AND event_id=$2`, [provider, eventId]);
+    return parkResult;
+  }
   const actor: Actor = { type: 'PROVIDER', name: provider };
   let result: unknown = { ok: true };
   if (body.type === 'payment.succeeded') {
@@ -470,3 +516,49 @@ export async function simulateProviderResult(paymentId: string, outcome: 'succee
 }
 
 export { getOrderDetail };
+
+/**
+ * Pay a restaurant order with the park wallet (wristband / card / app QR). Ledger debit + PAID + kitchen
+ * tickets happen in ONE transaction, so a double tap can never charge twice (idempotency key + order lock).
+ */
+export async function payOrderWithWallet(
+  orderId: string,
+  a: { credentialPayload?: string | null; accountId?: string | null; idempotencyKey?: string | null; staff?: { id: string; name: string } | null; actor: Actor; allowStaticDigital?: boolean },
+) {
+  const { resolveScan, effectiveStatus } = await import('./park/credentials');
+  const out = new Outbox();
+  const r = await tx(async (c) => {
+    const o = await lockOrder(c, orderId);
+    if (o.payment_status === 'PAID') return { alreadyPaid: true, order: o, balance: null };
+    if (!PAYABLE_STATUSES.includes(o.status)) throw conflict('ORDER_NOT_PAYABLE', `Order is ${o.status}`);
+    let accountId = a.accountId ?? null;
+    let cred: any = null;
+    if (!accountId) {
+      const res = await resolveScan(a.credentialPayload ?? '', c, { allowStaticDigital: !!a.allowStaticDigital });
+      if (!res.ok) throw conflict(res.reason!, 'Card / QR not valid');
+      cred = res.credential;
+      if ((await effectiveStatus(c, cred)) !== 'ACTIVE') throw conflict(`CARD_${cred.status}`, `Card is ${cred.status}`);
+      accountId = cred.account_id;
+    }
+    if (!accountId) throw conflict('NO_WALLET', 'This card has no wallet');
+    const member = await one<any>(`SELECT id FROM members WHERE account_id=$1`, [accountId], c);
+    const led = await walletPost(c, {
+      accountId, type: 'PAYMENT', amount: -Number(o.total), branchId: o.branch_id, credentialId: cred?.id ?? null, memberId: member?.id ?? null,
+      reference: `ORDER ${o.order_number}`, refType: 'ORDER', refId: o.id, storeId: o.store_id, staffId: a.staff?.id ?? null,
+      idempotencyKey: a.idempotencyKey ? `order-pay:${a.idempotencyKey}` : `order-pay:${o.id}`,
+    });
+    await query(`UPDATE orders SET account_id=COALESCE(account_id,$2), member_id=COALESCE(member_id,$3), credential_id=COALESCE(credential_id,$4) WHERE id=$1`, [o.id, accountId, member?.id ?? null, cred?.id ?? null], c);
+    await query(`UPDATE payments SET status='CANCELLED' WHERE order_id=$1 AND status = ANY($2)`, [o.id, OPEN_PAYMENT], c);
+    const pay = await one<any>(
+      `INSERT INTO payments (order_id, method, provider, status, amount, created_by, wallet_ledger_id) VALUES ($1,'WALLET','WALLET','PENDING',$2,$3,$4) RETURNING id`,
+      [o.id, o.total, a.staff?.id ?? null, led.entry.id],
+      c,
+    );
+    const res = await confirmPaymentTx(c, { orderId: o.id, paymentId: pay.id, method: 'WALLET' as any, provider: 'WALLET', reference: led.entry.txn_no, actor: a.actor, staffId: a.staff?.id ?? null }, out);
+    await announceWallet(out, c, accountId, o.branch_id, { reason: 'PAYMENT', orderNumber: o.order_number });
+    const w = await one<any>(`SELECT balance FROM wallet_accounts WHERE account_id=$1`, [accountId], c);
+    return { alreadyPaid: res.alreadyPaid, order: res.order, balance: Number(w.balance), ledger: led.entry };
+  });
+  await out.flush();
+  return r;
+}

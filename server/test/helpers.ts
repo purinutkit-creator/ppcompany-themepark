@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { ensureDb } from './setup';
 
 export interface Ctx {
+  park: any;
   app: FastifyInstance;
   kioskToken: string;
   kioskId: string;
@@ -29,6 +30,11 @@ export async function bootstrap(): Promise<Ctx> {
   invalidateSettings();
   await seedBase();
   const out: any = await seedDemo({ adminPassword: 'admin1234' });
+  const { seedParkDemo } = await import('../src/db/seed-park');
+  const park = await seedParkDemo(out.branchId);
+  const { simulator } = await import('../src/services/park/hardware');
+  simulator.passageDelayMs = 150;
+  simulator.closeDelayMs = 80;
   const app = await buildApp({ logger: false });
   await app.ready();
   const events: Ctx['events'] = [];
@@ -39,6 +45,11 @@ export async function bootstrap(): Promise<Ctx> {
     cashier: { employeeCode: 'CSH001', pin: '1111' },
     kitchen: { employeeCode: 'KIT001', pin: '3333' },
     manager: { employeeCode: 'MGR001', pin: '2222' },
+    supervisor: { employeeCode: 'SUP001', pin: '8888' },
+    ticket: { employeeCode: 'TKT001', pin: '6666' },
+    pos: { employeeCode: 'POS001', pin: '7777' },
+    gate: { employeeCode: 'GATE001', pin: '4444' },
+    ride: { employeeCode: 'RIDE001', pin: '5555' },
   })) {
     const r = await app.inject({ method: 'POST', url: '/api/auth/login', payload: body });
     tokens[k] = r.json().token;
@@ -46,7 +57,7 @@ export async function bootstrap(): Promise<Ctx> {
   const kioskToken = out.kioskTokens['KIOSK-01'];
   const menu = (await app.inject({ method: 'GET', url: '/api/kiosk/menu', headers: { 'x-kiosk-token': kioskToken } })).json();
   const products = Object.fromEntries(menu.products.map((p: any) => [p.sku, p]));
-  return { app, kioskToken, kioskId: kioskToken.split('.')[0], agentToken: out.printAgentToken, branchId: out.branchId, tokens, products, events };
+  return { app, kioskToken, kioskId: kioskToken.split('.')[0], agentToken: out.printAgentToken, branchId: out.branchId, tokens, products, events, park };
 }
 
 export const uuid = () => crypto.randomUUID();
@@ -92,4 +103,21 @@ export async function createOrder(ctx: Ctx, items: { sku: string; qty?: number; 
     items: items.map((i) => ({ productId: ctx.products[i.sku].id, qty: i.qty ?? 1, modifierIds: i.modifierIds ?? defaults(ctx.products[i.sku]) })),
     ...extra,
   });
+}
+
+export function device(ctx: Ctx, code: string, method: 'GET' | 'POST', url: string, payload?: unknown, headers: Record<string, string> = {}) {
+  return ctx.app.inject({ method, url, headers: { 'x-device-token': ctx.park.parkDeviceTokens[code], ...headers }, payload: payload as any });
+}
+export function publicReq(ctx: Ctx, method: 'GET' | 'POST', url: string, payload?: unknown, headers: Record<string, string> = {}) {
+  return ctx.app.inject({ method, url, headers, payload: payload as any });
+}
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export async function waitFor<T>(fn: () => Promise<T | null | undefined | false>, timeoutMs = 4000, stepMs = 50): Promise<T> {
+  const end = Date.now() + timeoutMs;
+  for (;;) {
+    const v = await fn();
+    if (v) return v as T;
+    if (Date.now() > end) throw new Error('waitFor timeout');
+    await sleep(stepMs);
+  }
 }

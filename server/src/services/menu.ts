@@ -14,8 +14,11 @@ const PROMO_COLS = `id, code, name, description, badge, type, value_type, value,
   to_char(start_time,'HH24:MI') AS start_time, to_char(end_time,'HH24:MI') AS end_time, days, usage_limit, usage_count,
   requires_code, priority, is_active`;
 
-export async function loadPromotions(db?: Db, onlyActive = true): Promise<Promotion[]> {
-  return query<Promotion>(`SELECT ${PROMO_COLS} FROM promotions ${onlyActive ? 'WHERE is_active' : ''} ORDER BY priority DESC, created_at`, [], db);
+/** Restaurant (FOOD) promotions by default; park rules live in the same table with applies_to PARK / ALL. */
+export async function loadPromotions(db?: Db, onlyActive = true, scope: 'FOOD' | 'ALL' = 'FOOD'): Promise<Promotion[]> {
+  const where = [onlyActive ? 'is_active' : 'true', scope === 'FOOD' ? `applies_to IN ('FOOD','ALL')` : 'true'];
+  const cols = scope === 'ALL' ? `${PROMO_COLS}, applies_to, channels, item_types, package_ids, ticket_type_ids, tier_ids, min_qty, max_units, advance_days, birthday_only, members_only, stackable, usage_per_member` : PROMO_COLS;
+  return query<Promotion>(`SELECT ${cols} FROM promotions WHERE ${where.join(' AND ')} ORDER BY priority DESC, created_at`, [], db);
 }
 
 export async function loadModifierGroups(productIds: string[], db?: Db): Promise<Map<string, MenuModifierGroup[]>> {
@@ -56,7 +59,7 @@ export async function loadModifierGroups(productIds: string[], db?: Db): Promise
 export async function getMenu(branchId: string, db?: Db): Promise<MenuData> {
   const [categories, productsRaw, schedules, promotions, recs] = await Promise.all([
     query<MenuCategory>(
-      `SELECT id, kind, name, image_url, icon, sort, schedule_id, is_active FROM categories WHERE is_active ORDER BY sort, created_at`,
+      `SELECT id, kind, name, image_url, icon, sort, schedule_id, is_active FROM categories WHERE is_active AND channel='FOOD' ORDER BY sort, created_at`,
       [],
       db,
     ),
@@ -69,7 +72,7 @@ export async function getMenu(branchId: string, db?: Db): Promise<MenuData> {
          FROM products p
          LEFT JOIN stocks s ON s.product_id = p.id AND s.branch_id = $1
          LEFT JOIN product_translations t ON t.product_id = p.id
-        WHERE p.deleted_at IS NULL AND p.status <> 'HIDDEN'
+        WHERE p.deleted_at IS NULL AND p.status <> 'HIDDEN' AND EXISTS (SELECT 1 FROM categories c WHERE c.id=p.category_id AND c.channel='FOOD')
         GROUP BY p.id, s.current, s.reserved
         ORDER BY p.sort, p.created_at`,
       [branchId],

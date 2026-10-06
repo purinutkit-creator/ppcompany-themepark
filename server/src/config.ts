@@ -19,6 +19,9 @@ export const config = {
     .filter(Boolean),
   jwtSecret: env('JWT_SECRET', 'dev-only-secret-change-me-dev-only-secret-change-me'),
   jwtTtl: env('JWT_TTL', '12h'),
+  memberJwtTtl: env('MEMBER_JWT_TTL', '30d'),
+  // HMAC key for credential QR / barcode signatures (rotate = every printed code becomes invalid).
+  credentialSecret: env('CREDENTIAL_SECRET', `${process.env.JWT_SECRET || 'dev-only-secret-change-me-dev-only-secret-change-me'}:credentials`),
   webhookToleranceSec: Number(env('WEBHOOK_TOLERANCE_SEC', '300')),
   uploadDir: env('UPLOAD_DIR', './uploads'),
   webDist: env('WEB_DIST', '../web/dist'),

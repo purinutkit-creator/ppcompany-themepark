@@ -26,6 +26,7 @@ const categorySchema = z.object({
   printer_id: nullableUuid,
   schedule_id: nullableUuid,
   is_active: z.boolean().default(true),
+  channel: z.enum(['FOOD', 'RETAIL', 'SERVICE']).default('FOOD'),
 });
 
 const translation = z.object({ name: z.string().max(200).default(''), short_description: z.string().max(300).nullish(), description: z.string().max(2000).nullish() });
@@ -44,6 +45,7 @@ const productSchema = z.object({
   is_recommended: z.boolean().default(false),
   track_stock: z.boolean().default(false),
   sort: z.number().int().default(0),
+  product_type: z.enum(['FOOD', 'DRINK', 'SOUVENIR', 'MERCHANDISE', 'PHOTO', 'LOCKER', 'SERVICE', 'OTHER']).default('FOOD'),
   translations: z.object({ th: translation, en: translation, zh: translation }).partial(),
   modifier_group_ids: z.array(uuid).default([]),
   recommendations: z.array(z.object({ recommended_product_id: uuid, message: i18n.default({}), special_price: money.nullish() })).default([]),
@@ -88,6 +90,20 @@ const promotionSchema = z.object({
   requires_code: z.boolean().default(false),
   priority: z.coerce.number().int().default(0),
   is_active: z.boolean().default(true),
+  // Park rule engine fields
+  applies_to: z.enum(['FOOD', 'PARK', 'ALL']).default('FOOD'),
+  channels: z.array(z.enum(['ONLINE', 'PORTAL', 'COUNTER', 'KIOSK', 'POS', 'RIDE', 'LOCKER'])).default([]),
+  item_types: z.array(z.enum(['PACKAGE', 'MEMBERSHIP', 'MEMBERSHIP_RENEWAL', 'MEMBERSHIP_UPGRADE', 'TOPUP', 'PRODUCT', 'LOCKER', 'RIDE_ADDON', 'SERVICE'])).default([]),
+  package_ids: z.array(uuid).default([]),
+  ticket_type_ids: z.array(uuid).default([]),
+  tier_ids: z.array(uuid).default([]),
+  min_qty: z.coerce.number().int().min(1).nullish(),
+  max_units: z.coerce.number().int().min(1).nullish(),
+  advance_days: z.coerce.number().int().min(0).max(365).nullish(),
+  birthday_only: z.boolean().default(false),
+  members_only: z.boolean().default(false),
+  stackable: z.boolean().default(true),
+  usage_per_member: z.coerce.number().int().min(1).nullish(),
 });
 
 const scheduleSchema = z.object({ name: z.string().min(1).max(60), start_time: hhmm, end_time: hhmm, days: z.array(z.number().int().min(0).max(6)).default([0, 1, 2, 3, 4, 5, 6]), is_active: z.boolean().default(true) });
@@ -102,8 +118,8 @@ export default async function menuRoutes(app: FastifyInstance) {
   app.post('/categories', { preHandler: requireStaff('categories.manage') }, async (req) => {
     const b = parse(categorySchema, req.body);
     const row = await one(
-      `INSERT INTO categories (kind, name, image_url, icon, sort, station_id, printer_id, schedule_id, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [b.kind, b.name, b.image_url ?? null, b.icon ?? null, b.sort, b.station_id, b.printer_id, b.schedule_id, b.is_active],
+      `INSERT INTO categories (kind, name, image_url, icon, sort, station_id, printer_id, schedule_id, is_active, channel) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [b.kind, b.name, b.image_url ?? null, b.icon ?? null, b.sort, b.station_id, b.printer_id, b.schedule_id, b.is_active, b.channel],
     );
     await audit(req, { action: 'CATEGORY_CREATE', entity: 'category', entityId: (row as any).id, newValue: row });
     await menuChanged();
@@ -115,8 +131,8 @@ export default async function menuRoutes(app: FastifyInstance) {
     const old = await one(`SELECT * FROM categories WHERE id=$1`, [id]);
     if (!old) throw notFound('Category');
     const row = await one(
-      `UPDATE categories SET kind=$2, name=$3, image_url=$4, icon=$5, sort=$6, station_id=$7, printer_id=$8, schedule_id=$9, is_active=$10 WHERE id=$1 RETURNING *`,
-      [id, b.kind, b.name, b.image_url ?? null, b.icon ?? null, b.sort, b.station_id, b.printer_id, b.schedule_id, b.is_active],
+      `UPDATE categories SET kind=$2, name=$3, image_url=$4, icon=$5, sort=$6, station_id=$7, printer_id=$8, schedule_id=$9, is_active=$10, channel=$11 WHERE id=$1 RETURNING *`,
+      [id, b.kind, b.name, b.image_url ?? null, b.icon ?? null, b.sort, b.station_id, b.printer_id, b.schedule_id, b.is_active, b.channel],
     );
     await audit(req, { action: 'CATEGORY_UPDATE', entity: 'category', entityId: id, oldValue: old, newValue: row });
     await menuChanged();
@@ -167,17 +183,17 @@ export default async function menuRoutes(app: FastifyInstance) {
 
   async function saveProduct(id: string | null, b: z.infer<typeof productSchema>) {
     return tx(async (c) => {
-      const params = [b.sku, b.barcode ?? null, b.category_id, b.image_url ?? null, b.price, b.cost, b.vat_rate ?? null, b.station_id, b.printer_id, b.schedule_id, b.status, b.is_recommended, b.track_stock, b.sort];
+      const params = [b.sku, b.barcode || null, b.category_id, b.image_url ?? null, b.price, b.cost, b.vat_rate ?? null, b.station_id, b.printer_id, b.schedule_id, b.status, b.is_recommended, b.track_stock, b.sort, b.product_type];
       const row = id
         ? await one<any>(
             `UPDATE products SET sku=$2, barcode=$3, category_id=$4, image_url=$5, price=$6, cost=$7, vat_rate=$8, station_id=$9, printer_id=$10, schedule_id=$11,
-               status=$12, is_recommended=$13, track_stock=$14, sort=$15 WHERE id=$1 AND deleted_at IS NULL RETURNING *`,
+               status=$12, is_recommended=$13, track_stock=$14, sort=$15, product_type=$16 WHERE id=$1 AND deleted_at IS NULL RETURNING *`,
             [id, ...params],
             c,
           )
         : await one<any>(
-            `INSERT INTO products (sku, barcode, category_id, image_url, price, cost, vat_rate, station_id, printer_id, schedule_id, status, is_recommended, track_stock, sort)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+            `INSERT INTO products (sku, barcode, category_id, image_url, price, cost, vat_rate, station_id, printer_id, schedule_id, status, is_recommended, track_stock, sort, product_type)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
             params,
             c,
           );
@@ -330,13 +346,15 @@ export default async function menuRoutes(app: FastifyInstance) {
   });
 
   // ---------------- promotions
-  app.get('/promotions', { preHandler: requireStaff() }, async () => loadPromotions(undefined, false));
+  app.get('/promotions', { preHandler: requireStaff() }, async () => loadPromotions(undefined, false, 'ALL'));
   const promoParams = (b: z.infer<typeof promotionSchema>) => [
     b.code, b.name, b.description, b.badge, b.type, b.value_type, b.value, b.buy_qty ?? null, b.get_qty ?? null, b.combo_price ?? null,
     b.min_order ?? null, b.max_discount ?? null, b.scope, b.product_ids, b.category_ids, b.branch_ids, b.start_date ?? null, b.end_date ?? null,
     b.start_time ?? null, b.end_time ?? null, b.days, b.usage_limit ?? null, b.requires_code || b.type === 'COUPON' || b.type === 'PROMO_CODE', b.priority, b.is_active,
+    b.applies_to, b.channels, b.item_types, b.package_ids, b.ticket_type_ids, b.tier_ids, b.min_qty ?? null, b.max_units ?? null, b.advance_days ?? null,
+    b.birthday_only, b.members_only, b.stackable, b.usage_per_member ?? null,
   ];
-  const PROMO_COLS = 'code, name, description, badge, type, value_type, value, buy_qty, get_qty, combo_price, min_order, max_discount, scope, product_ids, category_ids, branch_ids, start_date, end_date, start_time, end_time, days, usage_limit, requires_code, priority, is_active';
+  const PROMO_COLS = 'code, name, description, badge, type, value_type, value, buy_qty, get_qty, combo_price, min_order, max_discount, scope, product_ids, category_ids, branch_ids, start_date, end_date, start_time, end_time, days, usage_limit, requires_code, priority, is_active, applies_to, channels, item_types, package_ids, ticket_type_ids, tier_ids, min_qty, max_units, advance_days, birthday_only, members_only, stackable, usage_per_member';
   app.post('/promotions', { preHandler: requireStaff('promotions.manage') }, async (req) => {
     const b = parse(promotionSchema, req.body);
     const row = await one<any>(`INSERT INTO promotions (${PROMO_COLS}) VALUES (${PROMO_COLS.split(',').map((_, i) => `$${i + 1}`).join(',')}) RETURNING id`, promoParams(b));

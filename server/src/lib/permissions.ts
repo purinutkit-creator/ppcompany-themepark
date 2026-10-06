@@ -34,20 +34,79 @@ export const PERMISSIONS = [
   ['fonts.manage', 'Font management', 'Settings', false],
   ['languages.manage', 'Language management', 'Settings', false],
   ['audit.view', 'View audit logs', 'Settings', false],
+  // ---- theme park
+  ['tickets.sell', 'Sell tickets / packages (counter)', 'Tickets', false],
+  ['tickets.view', 'View tickets', 'Tickets', false],
+  ['tickets.manage', 'Manage ticket types & packages', 'Tickets', false],
+  ['tickets.override', 'Ticket override', 'Tickets', true],
+  ['bookings.view', 'View bookings', 'Bookings', false],
+  ['bookings.manage', 'Modify / cancel bookings', 'Bookings', false],
+  ['bookings.checkin', 'Check-in bookings & issue wristbands', 'Bookings', false],
+  ['members.view', 'View members', 'Members', false],
+  ['members.manage', 'Create / edit members', 'Members', false],
+  ['members.points', 'Adjust member points', 'Members', true],
+  ['membership.manage', 'Manage tiers, membership products & benefits', 'Members', false],
+  ['rewards.manage', 'Manage rewards', 'Members', false],
+  ['cards.view', 'View cards / wristbands', 'Cards', false],
+  ['cards.issue', 'Issue / bind cards & wristbands', 'Cards', false],
+  ['cards.manage', 'Suspend / lost / replace cards', 'Cards', true],
+  ['wallet.view', 'View wallets', 'Wallet', false],
+  ['wallet.topup', 'Wallet top-up', 'Wallet', false],
+  ['wallet.adjust', 'Wallet adjustment', 'Wallet', true],
+  ['wallet.refund', 'Wallet refund / cash-out', 'Wallet', true],
+  ['gates.view', 'View gates', 'Gates', false],
+  ['gates.operate', 'Approve / deny gate entry', 'Gates', false],
+  ['gates.open', 'Manual gate open', 'Gates', true],
+  ['gates.override', 'Gate supervisor override', 'Gates', true],
+  ['gates.emergency', 'Gate emergency mode', 'Gates', true],
+  ['gates.manage', 'Configure gates', 'Gates', false],
+  ['rides.view', 'View rides', 'Rides', false],
+  ['rides.operate', 'Ride operator (open / close / manual entry)', 'Rides', false],
+  ['rides.manage', 'Configure rides & scan points', 'Rides', false],
+  ['queue.rides', 'Manage ride virtual queues', 'Rides', false],
+  ['pos.sell', 'POS sales', 'POS', false],
+  ['pos.discount', 'POS manual discount', 'POS', true],
+  ['sales.void', 'Void park sales', 'POS', true],
+  ['inventory.view', 'View inventory', 'Inventory', false],
+  ['inventory.manage', 'Stock in / out / transfer / adjust', 'Inventory', false],
+  ['lockers.operate', 'Locker operations', 'Lockers', false],
+  ['lockers.manage', 'Configure lockers & rates', 'Lockers', false],
+  ['lockers.force_open', 'Force-open lockers', 'Lockers', true],
+  ['shifts.open', 'Open / close own shift', 'Shifts', false],
+  ['shifts.manage', 'Manage all shifts', 'Shifts', true],
+  ['transactions.view', 'Transaction center', 'Finance', false],
+  ['devices.manage', 'Device management', 'Devices', false],
+  ['zones.manage', 'Zones & park map', 'Devices', false],
+  ['notifications.view', 'Notification center', 'Settings', false],
+  ['security.view', 'Security events', 'Gates', false],
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number][0];
 const ALL = PERMISSIONS.map((p) => p[0]) as Permission[];
 
+const P = (...p: Permission[]) => p;
+const COUNTER_BASE = P('dashboard.view', 'tickets.sell', 'tickets.view', 'bookings.view', 'bookings.checkin', 'members.view', 'members.manage',
+  'cards.view', 'cards.issue', 'wallet.view', 'wallet.topup', 'payments.cash', 'payments.verify', 'payments.view', 'shifts.open', 'transactions.view', 'rides.view', 'gates.view');
+
 export const DEFAULT_ROLES: { code: string; name: string; level: number; permissions: Permission[] }[] = [
   { code: 'OWNER', name: 'Owner', level: 100, permissions: ALL },
   { code: 'ADMIN', name: 'Admin', level: 90, permissions: ALL },
+  { code: 'PARK_MANAGER', name: 'Park Manager', level: 80, permissions: ALL.filter((p) => !['roles.manage', 'settings.manage', 'branches.manage'].includes(p)) },
   {
     code: 'MANAGER',
     name: 'Manager',
     level: 70,
     permissions: ALL.filter((p) => !['roles.manage', 'settings.manage', 'branches.manage'].includes(p)),
   },
+  {
+    code: 'SUPERVISOR', name: 'Supervisor', level: 70,
+    permissions: ALL.filter((p) => !['roles.manage', 'settings.manage', 'branches.manage', 'staff.manage', 'devices.manage', 'membership.manage', 'tickets.manage', 'rides.manage', 'gates.manage', 'lockers.manage', 'zones.manage'].includes(p)),
+  },
+  { code: 'FINANCE', name: 'Finance', level: 60, permissions: P('dashboard.view', 'reports.view', 'reports.export', 'transactions.view', 'payments.view', 'payments.refund', 'wallet.view', 'shifts.manage', 'orders.view', 'bookings.view', 'members.view', 'audit.view', 'inventory.view', 'notifications.view') },
+  { code: 'CUSTOMER_SERVICE', name: 'Customer Service', level: 50, permissions: [...COUNTER_BASE, 'bookings.manage', 'cards.manage', 'notifications.view', 'queue.rides', 'lockers.operate'] },
+  { code: 'TICKET_CASHIER', name: 'Ticket Cashier', level: 40, permissions: COUNTER_BASE },
+  { code: 'POS_CASHIER', name: 'POS Cashier', level: 40, permissions: P('pos.sell', 'orders.view', 'orders.manage', 'payments.cash', 'payments.view', 'members.view', 'cards.view', 'wallet.view', 'wallet.topup', 'shifts.open', 'inventory.view', 'kitchen.view', 'queue.manage', 'stock.view') },
+  { code: 'SECURITY', name: 'Security', level: 40, permissions: P('gates.view', 'gates.operate', 'security.view', 'cards.view', 'tickets.view', 'notifications.view', 'dashboard.view') },
   {
     code: 'CASHIER',
     name: 'Cashier',
@@ -59,9 +118,19 @@ export const DEFAULT_ROLES: { code: string; name: string; level: number; permiss
   },
   { code: 'KITCHEN', name: 'Kitchen', level: 30, permissions: ['kitchen.view', 'kitchen.manage', 'orders.view', 'stock.view'] },
   { code: 'STAFF', name: 'Staff', level: 10, permissions: ['orders.view', 'kitchen.view', 'queue.manage'] },
+  { code: 'GATE_OPERATOR', name: 'Gate Operator', level: 30, permissions: P('gates.view', 'gates.operate', 'tickets.view', 'cards.view', 'security.view') },
+  { code: 'RIDE_OPERATOR', name: 'Ride Operator', level: 30, permissions: P('rides.view', 'rides.operate', 'queue.rides', 'cards.view', 'payments.cash', 'shifts.open') },
+  { code: 'RESTAURANT_STAFF', name: 'Restaurant Staff', level: 30, permissions: P('pos.sell', 'orders.view', 'orders.manage', 'payments.cash', 'kitchen.view', 'queue.manage', 'cards.view', 'wallet.view', 'shifts.open', 'stock.view') },
+  { code: 'KITCHEN_STAFF', name: 'Kitchen Staff', level: 30, permissions: P('kitchen.view', 'kitchen.manage', 'orders.view', 'stock.view') },
+  { code: 'RETAIL_STAFF', name: 'Retail Staff', level: 30, permissions: P('pos.sell', 'payments.cash', 'cards.view', 'wallet.view', 'inventory.view', 'shifts.open', 'members.view') },
+  { code: 'LOCKER_STAFF', name: 'Locker Staff', level: 30, permissions: P('lockers.operate', 'cards.view', 'wallet.view', 'wallet.topup', 'payments.cash', 'shifts.open') },
 ];
 
 /** Actions that may require a manager PIN (configured in settings.security.managerPinActions). */
-export const MANAGER_PIN_ACTIONS = ['REFUND', 'VOID', 'MANUAL_PAYMENT_APPROVAL', 'REPRINT', 'CANCEL_PAID_ORDER', 'DISCOUNT'] as const;
+export const MANAGER_PIN_ACTIONS = [
+  'REFUND', 'VOID', 'MANUAL_PAYMENT_APPROVAL', 'REPRINT', 'CANCEL_PAID_ORDER', 'DISCOUNT',
+  'MANUAL_GATE_OPEN', 'TICKET_OVERRIDE', 'WALLET_ADJUSTMENT', 'WALLET_REFUND', 'POINTS_ADJUSTMENT', 'CARD_REPLACEMENT',
+  'TRANSACTION_EDIT', 'LOCKER_FORCE_OPEN', 'BOOKING_CANCEL', 'SHIFT_CASH_OUT',
+] as const;
 export type ManagerPinAction = (typeof MANAGER_PIN_ACTIONS)[number];
 export const MANAGER_LEVEL = 70;

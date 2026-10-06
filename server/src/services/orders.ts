@@ -50,6 +50,8 @@ export async function orderSummary(orderId: string, db?: Db) {
 export async function broadcastOrder(out: Outbox, orderId: string, db: Db, event: string = EVENTS.ORDER_UPDATED, extra: Record<string, unknown> = {}) {
   const s = await orderSummary(orderId, db);
   if (!s) return;
+  const acc = await one<any>(`SELECT account_id FROM orders WHERE id=$1`, [orderId], db);
+  if (acc?.account_id) out.add(rooms.account(acc.account_id), event, { ...s, ...extra });
   const targets = [rooms.branchCashier(s.branch_id), rooms.branchAdmin(s.branch_id)];
   if (s.kiosk_id) targets.push(rooms.kiosk(s.kiosk_id));
   out.add(targets, event, { ...s, ...extra });
@@ -70,6 +72,9 @@ export interface CreateOrderInput {
   promoCode?: string | null;
   note?: string | null;
   offlineRef?: string | null;
+  /** Park member (scanned card / logged-in app user): tier FOOD discount + points + wallet. */
+  member?: { memberId: string | null; accountId: string | null; credentialId: string | null } | null;
+  storeId?: string | null;
 }
 
 interface BuiltLine {
@@ -83,7 +88,7 @@ interface BuiltLine {
 }
 
 /** Resolve products/modifiers, validate availability, schedules & modifier rules, and price the cart. */
-export async function buildCart(db: Db, branchId: string, input: Pick<CreateOrderInput, 'items' | 'orderType' | 'promoCode'>) {
+export async function buildCart(db: Db, branchId: string, input: Pick<CreateOrderInput, 'items' | 'orderType' | 'promoCode' | 'member'>) {
   if (!input.items.length) throw badRequest('EMPTY_CART', 'Cart is empty');
   const settings = await getSettings();
   const ids = [...new Set(input.items.map((i) => i.productId))];
@@ -161,6 +166,24 @@ export async function buildCart(db: Db, branchId: string, input: Pick<CreateOrde
     vatRate: l.product.vat_rate == null ? null : Number(l.product.vat_rate),
   }));
   const promotions = await loadPromotions(db);
+  if (input.member?.memberId) {
+    // Member tier FOOD discount as a synthetic order-level promotion (priority / stacking from settings).
+    const b = await one<any>(
+      `SELECT MAX(b.value) AS pct, (SELECT name FROM member_tiers t JOIN members m ON m.tier_id=t.id WHERE m.id=$1) AS tier_name
+         FROM memberships ms JOIN membership_benefits b ON b.product_id=ms.product_id WHERE ms.member_id=$1 AND ms.status='ACTIVE' AND b.type='FOOD_DISCOUNT'`,
+      [input.member.memberId],
+      db,
+    );
+    if (b?.pct > 0) {
+      const tn = b.tier_name ?? {};
+      promotions.push({
+        id: 'member:FOOD', code: null, name: { th: `ส่วนลดสมาชิก ${tn.th ?? ''}`.trim(), en: `${tn.en ?? ''} member discount`.trim(), zh: `${tn.zh ?? ''}会员折扣` },
+        description: {}, badge: {}, type: 'PERCENT', value_type: 'PERCENT', value: Number(b.pct), buy_qty: null, get_qty: null, combo_price: null, min_order: null,
+        max_discount: null, scope: 'ORDER', product_ids: [], category_ids: [], branch_ids: [], start_date: null, end_date: null, start_time: null, end_time: null,
+        days: [], usage_limit: null, usage_count: 0, requires_code: false, priority: settings.member.discountPriority, is_active: true,
+      } as any);
+    }
+  }
   const pricing = priceCart(cartLines, {
     promotions,
     tax: settings.tax as any,
@@ -199,7 +222,7 @@ async function insertOrderWithNumber(c: Tx, branchId: string, build: (num: strin
 
 export async function createOrder(
   input: CreateOrderInput,
-  ctx: { branchId: string; kioskId: string | null; source: 'KIOSK' | 'CASHIER'; actor: Actor; staffId?: string | null },
+  ctx: { branchId: string; kioskId: string | null; source: 'KIOSK' | 'CASHIER' | 'MOBILE' | 'POS'; actor: Actor; staffId?: string | null },
 ) {
   // Idempotency: kiosks generate clientOrderId once per checkout (also used by offline sync).
   const existing = await one<any>(`SELECT id FROM orders WHERE client_order_id=$1`, [input.clientOrderId]);
@@ -217,14 +240,15 @@ export async function createOrder(
         const o = await one<any>(
           `INSERT INTO orders (branch_id, kiosk_id, client_order_id, order_number, order_type, language, subtotal, discount,
               service_charge, vat, total, vat_mode, vat_rate, service_charge_rate, promo_code, applied_promotions, note, source,
-              offline_ref, created_by, expires_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+              offline_ref, created_by, expires_at, member_id, account_id, credential_id, store_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25) RETURNING id`,
           [
             ctx.branchId, ctx.kioskId, input.clientOrderId, num, input.orderType, input.language, pricing.subtotal, pricing.discount,
             pricing.serviceCharge, pricing.vat, pricing.total, settings.tax.vatMode, settings.tax.vatRate,
             settings.tax.serviceChargeOrderTypes.includes(input.orderType) ? settings.tax.serviceChargeRate : 0,
             input.promoCode?.toUpperCase() || null, JSON.stringify(pricing.appliedPromotions), input.note ?? null, ctx.source,
-            input.offlineRef ?? null, ctx.staffId ?? null, expires,
+            input.offlineRef ?? null, ctx.staffId ?? null, expires, input.member?.memberId ?? null, input.member?.accountId ?? null,
+            input.member?.credentialId ?? null, input.storeId ?? null,
           ],
           c,
         );

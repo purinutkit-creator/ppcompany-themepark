@@ -8,6 +8,7 @@ export type Block =
   | { t: 'rule'; char?: '-' | '=' }
   | { t: 'qr'; data: string; size?: number }
   | { t: 'image'; url: string; width?: number }
+  | { t: 'barcode'; data: string; height?: number; hri?: boolean }
   | { t: 'feed'; lines?: number };
 
 export interface PrintDoc {
@@ -174,6 +175,7 @@ export function buildTestDoc(p: PrintJobPayload, printerName: string): PrintDoc 
 }
 
 export function buildDoc(p: PrintJobPayload, printerName = 'Printer'): PrintDoc {
+  if (p.documentType === 'DOC' && p.doc) return p.doc;
   if (p.documentType === 'RECEIPT') return buildReceiptDoc(p);
   if (p.documentType === 'KITCHEN_TICKET') return buildKitchenDoc(p);
   return buildTestDoc(p, printerName);

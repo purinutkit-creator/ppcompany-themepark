@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { EVENTS, rooms, type Lang, type PrintJobPayload, type StoreInfo } from '@kiosk/shared';
+import { EVENTS, fontForLang, rooms, type Lang, type PrintJobPayload, type StoreInfo } from '@kiosk/shared';
 import { one, query, tx, type Db, type Tx } from '../db/pool';
 import { conflict, notFound } from '../lib/errors';
 import { Outbox, publish } from '../lib/realtime';
@@ -90,7 +90,7 @@ export async function createOrderPrintJobs(c: Tx, order: any, out: Outbox, s?: S
           receiptFooter: settings.receipt.footer,
           showQr: settings.receipt.showQr,
           lookupUrl,
-          font: settings.fonts.receipt,
+          font: fontForLang(settings.fonts.receipt, receiptLang(settings, order.language)),
         };
         const j = await insertJob(c, {
           branchId: order.branch_id, orderId: order.id, orderNumber: order.order_number, printerId, type: 'RECEIPT', copyNo: copy,
@@ -133,7 +133,7 @@ export async function createOrderPrintJobs(c: Tx, order: any, out: Outbox, s?: S
           language: settings.kitchen.ticketLanguage as Lang,
           copyNo: copy,
           isReprint: false,
-          font: settings.fonts.kitchenTicket,
+          font: fontForLang(settings.fonts.kitchenTicket, settings.kitchen.ticketLanguage as Lang),
         };
         const j = await insertJob(c, {
           branchId: order.branch_id, orderId: order.id, orderNumber: order.order_number, printerId: g.printerId, stationId: g.stationId,
@@ -163,7 +163,7 @@ export async function reprint(orderId: string, kind: 'RECEIPT' | 'KITCHEN_TICKET
       const payload: PrintJobPayload = {
         documentType: 'RECEIPT', order: await buildPrintOrder(orderId, c), store: storeInfo(settings),
         language: receiptLang(settings, order.language), copyNo: 1, isReprint: true, receiptFooter: settings.receipt.footer,
-        showQr: settings.receipt.showQr, lookupUrl: `${config.publicUrl}/o/${order.id}`, font: settings.fonts.receipt,
+        showQr: settings.receipt.showQr, lookupUrl: `${config.publicUrl}/o/${order.id}`, font: fontForLang(settings.fonts.receipt, receiptLang(settings, order.language)),
       };
       jobs.push(await insertJob(c, { branchId: order.branch_id, orderId, orderNumber: order.order_number, printerId: pid, type: 'RECEIPT', copyNo: 1, reprint: true, payload, dedupe: `reprint:${crypto.randomUUID()}`, requestedBy: userId, maxAttempts: settings.printing.retryMaxAttempts }));
     } else {

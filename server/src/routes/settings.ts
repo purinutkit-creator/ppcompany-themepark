@@ -12,7 +12,7 @@ import type { Permission } from '../lib/permissions';
 
 const KEY_PERMISSION: Partial<Record<SettingsKey, Permission>> = { theme: 'theme.manage', fonts: 'fonts.manage', queue: 'queue.manage' };
 
-const fontSpec = z.object({ family: z.string().min(1).max(80), weight: z.coerce.number().int().min(100).max(900), size: z.coerce.number().min(8).max(200), letterSpacing: z.coerce.number().min(-5).max(20), lineHeight: z.coerce.number().min(0.8).max(3) });
+const fontSpec = z.object({ family: z.string().min(1).max(80), weight: z.coerce.number().int().min(100).max(900), size: z.coerce.number().min(8).max(200), letterSpacing: z.coerce.number().min(-5).max(20), lineHeight: z.coerce.number().min(0.8).max(3), byLang: z.record(z.enum(['th', 'en', 'zh']), z.string().max(80)).optional() });
 /** Strict validation for keys where bad values would break money math or devices. */
 const VALIDATORS: Partial<Record<SettingsKey, z.ZodTypeAny>> = {
   tax: z.object({ vatRate: z.coerce.number().min(0).max(30), vatMode: z.enum(['INCLUDED', 'EXCLUDED']), serviceChargeRate: z.coerce.number().min(0).max(30), serviceChargeOrderTypes: z.array(z.enum(['DINE_IN', 'TAKE_AWAY'])) }),

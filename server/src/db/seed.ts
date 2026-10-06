@@ -16,7 +16,10 @@ export async function seedBase() {
        ('th','Thai','ไทย','🇹🇭',true,true,0), ('en','English','English','🇬🇧',true,false,1), ('zh','Chinese','中文','🇨🇳',true,false,2)
      ON CONFLICT (code) DO NOTHING`,
   );
+  const existing = new Set((await query<{ code: string }>(`SELECT code FROM permissions`)).map((r) => r.code));
+  const added: string[] = [];
   for (const [code, name, grp, sensitive] of PERMISSIONS) {
+    if (!existing.has(code)) added.push(code);
     await query(`INSERT INTO permissions (code, name, grp, is_sensitive) VALUES ($1,$2,$3,$4) ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name, grp=EXCLUDED.grp, is_sensitive=EXCLUDED.is_sensitive`, [code, name, grp, sensitive]);
   }
   for (const r of DEFAULT_ROLES) {
@@ -24,11 +27,12 @@ export async function seedBase() {
       `INSERT INTO roles (code, name, level, is_system) VALUES ($1,$2,$3,true) ON CONFLICT (code) DO UPDATE SET is_system=true RETURNING id, (xmax = 0) AS inserted`,
       [r.code, r.name, r.level],
     );
-    // Owner always has every permission (including ones added by upgrades).
-    if (role.inserted || r.code === 'OWNER') {
-      await query(`INSERT INTO role_permissions (role_id, permission_code) SELECT $1, unnest($2::text[]) ON CONFLICT DO NOTHING`, [role.id, r.permissions]);
-    }
+    // Owner always has every permission (including ones added by upgrades); on upgrades, built-in roles
+    // receive only the newly introduced permissions from their defaults (admin customisations are kept).
+    const grant = role.inserted || r.code === 'OWNER' ? r.permissions : existing.size ? r.permissions.filter((p) => added.includes(p)) : [];
+    if (grant.length) await query(`INSERT INTO role_permissions (role_id, permission_code) SELECT $1, unnest($2::text[]) ON CONFLICT DO NOTHING`, [role.id, grant]);
   }
+  await query(`INSERT INTO member_tiers (code, name, rank, color, is_default) VALUES ('BASIC', $1, 0, '#64748b', true) ON CONFLICT (code) DO NOTHING`, [t('สมาชิกทั่วไป', 'Basic', '普通会员')]);
   await query(
     `INSERT INTO fonts (family, source, weights, scripts) VALUES
        ('Prompt','GOOGLE','{300,400,500,600,700}','{latin,thai}'), ('Kanit','GOOGLE','{300,400,500,600,700}','{latin,thai}'),
@@ -281,6 +285,8 @@ export async function main() {
     return;
   }
   const out = await seedDemo({ adminPassword: process.env.SEED_ADMIN_PASSWORD || 'admin1234' });
+  const { seedParkDemo } = await import('./seed-park');
+  Object.assign(out, await seedParkDemo(out.branchId as string));
   const here = path.dirname(fileURLToPath(import.meta.url));
   const file = path.resolve(here, '..', '..', '.seed-output.json');
   fs.writeFileSync(file, JSON.stringify(out, null, 2));
@@ -288,4 +294,6 @@ export async function main() {
   console.log(JSON.stringify(out, null, 2));
   const adminPw = process.env.SEED_ADMIN_PASSWORD ? '<SEED_ADMIN_PASSWORD>' : 'admin1234';
   console.log(`\nLogins: admin / ${adminPw} (or PIN OWN001/1234), manager MGR001/2222, cashier CSH001/1111, kitchen KIT001/3333 — change these after first login`);
+  console.log('Park staff: supervisor SUP001/8888, ticket cashier TKT001/6666, POS cashier POS001/7777, gate operator GATE001/4444, ride operator RIDE001/5555');
+  console.log('Demo members (portal login): 0811111111 / member1234 (GOLD), 0822222222 / member1234 (BASIC)');
 }

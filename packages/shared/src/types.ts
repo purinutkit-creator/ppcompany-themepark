@@ -47,7 +47,7 @@ export type PaymentStatusOfOrder = 'UNPAID' | 'PENDING' | 'PAID' | 'REFUNDED' | 
 export const ORDER_TYPES = ['DINE_IN', 'TAKE_AWAY'] as const;
 export type OrderType = (typeof ORDER_TYPES)[number];
 
-export const PAYMENT_METHODS = ['QR', 'CASH', 'CARD', 'OTHER'] as const;
+export const PAYMENT_METHODS = ['QR', 'CASH', 'CARD', 'OTHER', 'WALLET'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export type PaymentStatus =
@@ -73,9 +73,9 @@ export type QueueStatus = 'RESERVED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CA
 
 export const PRINT_JOB_STATUSES = ['QUEUED', 'PRINTING', 'PRINTED', 'FAILED', 'RETRYING', 'CANCELLED'] as const;
 export type PrintJobStatus = (typeof PRINT_JOB_STATUSES)[number];
-export type PrintDocumentType = 'RECEIPT' | 'KITCHEN_TICKET' | 'TEST';
+export type PrintDocumentType = 'RECEIPT' | 'KITCHEN_TICKET' | 'TEST' | 'DOC';
 
-export const PRINTER_TYPES = ['RECEIPT', 'KITCHEN', 'BEVERAGE', 'DESSERT', 'OTHER'] as const;
+export const PRINTER_TYPES = ['RECEIPT', 'KITCHEN', 'BEVERAGE', 'DESSERT', 'OTHER', 'TICKET', 'WRISTBAND', 'LABEL'] as const;
 export type PrinterType = (typeof PRINTER_TYPES)[number];
 export const PRINTER_CONNECTIONS = ['USB', 'BLUETOOTH', 'BLE', 'LAN', 'ETHERNET', 'WIFI'] as const;
 export type PrinterConnection = (typeof PRINTER_CONNECTIONS)[number];
@@ -277,6 +277,15 @@ export interface FontSpec {
   size: number;
   letterSpacing: number;
   lineHeight: number;
+  /** Font family per language (falls back to `family`). */
+  byLang?: Partial<Record<Lang, string>>;
+}
+
+/** Resolve the font for a surface in a given language. */
+export function fontForLang(spec: FontSpec | null | undefined, lang: Lang): FontSpec | null {
+  if (!spec) return null;
+  const fam = spec.byLang?.[lang];
+  return fam ? { ...spec, family: fam } : spec;
 }
 
 export interface PrintJobPayload {
@@ -292,4 +301,8 @@ export interface PrintJobPayload {
   lookupUrl?: string | null;
   font?: FontSpec | null;
   message?: string;
+  /** Pre-built document (documentType 'DOC'): park receipts, tickets, wristbands, shift reports. */
+  doc?: import('./print/document').PrintDoc;
+  /** Short label for print queues (e.g. "Receipt S-261006-000123 (customer copy)"). */
+  title?: string;
 }

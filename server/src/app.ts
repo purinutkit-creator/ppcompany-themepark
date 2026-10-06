@@ -22,6 +22,16 @@ import deviceRoutes from './routes/devices';
 import staffRoutes from './routes/staff';
 import settingsRoutes from './routes/settings';
 import reportRoutes from './routes/reports';
+import parkPublicRoutes from './routes/park/public';
+import parkMemberRoutes from './routes/park/member';
+import parkSalesRoutes from './routes/park/sales';
+import parkCounterRoutes from './routes/park/counter';
+import parkGateRoutes, { parkHardwareRoutes } from './routes/park/gates';
+import parkRideRoutes from './routes/park/rides';
+import parkLockerRoutes from './routes/park/lockers';
+import parkAdminRoutes from './routes/park/admin';
+import parkOpsRoutes, { parkDeviceRoutes } from './routes/park/ops';
+import parkPosRoutes, { parkKioskFoodRoutes } from './routes/park/pos';
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -49,6 +59,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     if (err.code === '23503') return reply.status(409).send({ error: { code: 'IN_USE', message: 'Record is referenced by other data' } });
     if (err.code === '22P02' || err.code === '23514') return reply.status(400).send({ error: { code: 'INVALID_VALUE', message: err.message } });
     req.log.error(err);
+    if (process.env.DEBUG_500) console.error('[500]', req.method, req.url, err);
     return reply.status(500).send({ error: { code: 'INTERNAL', message: 'Internal server error' } });
   });
 
@@ -67,6 +78,20 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(staffRoutes, { prefix: '/api/staff' });
   await app.register(settingsRoutes, { prefix: '/api/settings' });
   await app.register(reportRoutes, { prefix: '/api/reports' });
+  // ---- theme park platform
+  await app.register(parkPublicRoutes, { prefix: '/api/park/public' });
+  await app.register(parkMemberRoutes, { prefix: '/api/park/member' });
+  await app.register(parkSalesRoutes, { prefix: '/api/park/sales' });
+  await app.register(parkCounterRoutes, { prefix: '/api/park' });
+  await app.register(parkGateRoutes, { prefix: '/api/park/gates' });
+  await app.register(parkHardwareRoutes, { prefix: '/api/park/hardware' });
+  await app.register(parkRideRoutes, { prefix: '/api/park/rides' });
+  await app.register(parkLockerRoutes, { prefix: '/api/park/lockers' });
+  await app.register(parkAdminRoutes, { prefix: '/api/park/admin' });
+  await app.register(parkOpsRoutes, { prefix: '/api/park' });
+  await app.register(parkDeviceRoutes, { prefix: '/api/park/device' });
+  await app.register(parkPosRoutes, { prefix: '/api/park/pos' });
+  await app.register(parkKioskFoodRoutes, { prefix: '/api/kiosk' });
 
   fs.mkdirSync(uploadRoot(), { recursive: true });
   await app.register(fastifyStatic, {

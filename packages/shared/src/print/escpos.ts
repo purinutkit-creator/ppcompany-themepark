@@ -50,6 +50,14 @@ export class EscPos {
     this.raw([0x1d, 0x28, 0x6b, len & 0xff, (len >> 8) & 0xff, 0x31, 0x50, 0x30]).raw(bytes);
     return this.raw([0x1d, 0x28, 0x6b, 3, 0, 0x31, 0x51, 0x30]);
   }
+  /** CODE128 barcode (function B, code set B) with human-readable text below. */
+  barcode128(data: string, height = 80, moduleWidth = 2, hri = true): this {
+    const bytes = new TextEncoder().encode('{B' + data);
+    this.raw([0x1d, 0x68, Math.max(1, Math.min(255, height))]);
+    this.raw([0x1d, 0x77, Math.max(1, Math.min(6, moduleWidth))]);
+    this.raw([0x1d, 0x48, hri ? 2 : 0]);
+    return this.raw([0x1d, 0x6b, 73, bytes.length]).raw(bytes);
+  }
   /**
    * Raster bit image (GS v 0). `bits` is row-major 1-bit packed data, `widthBytes` per row.
    * Sent in bands so printers with small buffers do not overflow.

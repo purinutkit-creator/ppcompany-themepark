@@ -6,8 +6,8 @@ import { branchOf, requireStaff } from '../lib/auth';
 import { badRequest, forbidden } from '../lib/errors';
 import { parse, uuid, z } from '../lib/validate';
 
-type Col = { key: string; label: string; type?: 'money' | 'number' | 'text' | 'datetime' | 'percent' };
-interface Report {
+export type Col = { key: string; label: string; type?: 'money' | 'number' | 'text' | 'datetime' | 'percent' };
+export interface Report {
   title: string;
   columns: Col[];
   rows: any[];
@@ -260,7 +260,7 @@ async function paymentList(f: Filters, title: string): Promise<Report> {
   };
 }
 
-function csvCell(v: unknown): string {
+export function csvCell(v: unknown): string {
   if (v == null) return '';
   const s = v instanceof Date ? v.toISOString() : String(v);
   // Neutralise spreadsheet formula injection.
@@ -268,7 +268,7 @@ function csvCell(v: unknown): string {
   return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-async function sendReport(reply: FastifyReply, r: Report, format: 'json' | 'csv' | 'xlsx', name: string) {
+export async function sendReport(reply: FastifyReply, r: Report, format: 'json' | 'csv' | 'xlsx', name: string) {
   if (format === 'json') return r;
   const filename = `${name}-${new Date().toISOString().slice(0, 10)}`;
   if (format === 'csv') {

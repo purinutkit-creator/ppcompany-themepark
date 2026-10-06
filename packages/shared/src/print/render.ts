@@ -1,8 +1,9 @@
 import QRCode from 'qrcode';
 import { EscPos } from './escpos';
 import type { Block, PrintDoc } from './document';
-import { needsRaster } from './document';
-import type { RasterMode } from '../types';
+import { buildDoc, needsRaster } from './document';
+import type { PrintJobPayload, RasterMode } from '../types';
+import { code128Modules } from '../barcode';
 
 /* ---------- Canvas abstraction (browser canvas or @napi-rs/canvas in the print agent) ---------- */
 export interface Ctx2D {
@@ -190,6 +191,50 @@ export async function renderDocToCanvas(doc: PrintDoc, env: RasterEnv, opt: Rend
         },
       });
       y += sz + 8;
+    } else if (b.t === 'barcode') {
+      let mods: number[] = [];
+      try {
+        mods = code128Modules(b.data);
+      } catch {
+        mods = [];
+      }
+      const total = mods.reduce((a, n) => a + n, 0);
+      const quiet = 10;
+      const unit = total ? Math.floor((width - pad * 2) / (total + quiet * 2)) : 0;
+      const barH = b.height ?? Math.round(base * 3);
+      const yy = y;
+      if (unit >= 1) {
+        const x0 = Math.round((width - total * unit) / 2);
+        ops.push({
+          y: yy,
+          h: barH,
+          draw: (ctx) => {
+            ctx.fillStyle = '#000';
+            let x = x0;
+            mods.forEach((w, i) => {
+              if (i % 2 === 0) ctx.fillRect(x, yy + 2, w * unit, barH - 4);
+              x += w * unit;
+            });
+          },
+        });
+        y += barH;
+      }
+      if (b.hri !== false || unit < 1) {
+        const font = fontFor(1, false);
+        const lineH = Math.round(base * lh);
+        const yy2 = y;
+        ops.push({
+          y: yy2,
+          h: lineH,
+          draw: (ctx) => {
+            ctx.font = font;
+            ctx.fillStyle = '#000';
+            const w = ctx.measureText(b.data).width;
+            ctx.fillText(b.data, Math.max(pad, (width - w) / 2), yy2 + lineH * 0.78);
+          },
+        });
+        y += lineH;
+      }
     } else if (b.t === 'image') {
       const img = env.loadImage ? await env.loadImage(b.url).catch(() => null) : null;
       if (img && img.width) {
@@ -260,6 +305,7 @@ export function renderEscPosText(doc: PrintDoc, opt: RenderOptions): Uint8Array 
     } else if (b.t === 'rule') p.align('left').line((b.char ?? '-').repeat(cols));
     else if (b.t === 'feed') p.feed(b.lines ?? 1);
     else if (b.t === 'qr') p.align('center').qr(b.data, b.size ?? 6).feed(1);
+    else if (b.t === 'barcode') p.align('center').barcode128(b.data, b.height ?? 80, cols >= 48 ? 2 : 1, b.hri !== false).feed(1);
   }
   if (doc.cut) p.cut();
   if (opt.openDrawer || doc.openDrawer) p.openDrawer();
@@ -281,4 +327,44 @@ export async function renderEscPos(doc: PrintDoc, env: RasterEnv | null, opt: Re
 
 export function blockText(b: Block): string {
   return b.t === 'text' ? b.text : b.t === 'cols' ? `${b.left} ${b.right}` : '';
+}
+
+/** ZPL (Zebra-compatible) output: the document is rasterised and sent as a ^GFA graphic field. */
+export async function renderZpl(doc: PrintDoc, env: RasterEnv, opt: RenderOptions & { labelLengthDots?: number }): Promise<Uint8Array> {
+  const canvas = await renderDocToCanvas(doc, env, opt);
+  const { bits, widthBytes, height } = canvasToBits(canvas);
+  let hex = '';
+  for (let i = 0; i < bits.length; i++) hex += bits[i].toString(16).padStart(2, '0').toUpperCase();
+  const total = bits.length;
+  const zpl = `^XA^PW${widthBytes * 8}^LL${Math.max(height, opt.labelLengthDots ?? 0)}^FO0,0^GFA,${total},${total},${widthBytes},${hex}^FS^XZ`;
+  return new TextEncoder().encode(zpl);
+}
+
+export interface PrinterLike {
+  name: string;
+  paper_width: 58 | 80;
+  dots_per_line?: number | null;
+  chars_per_line?: number | null;
+  raster_mode?: RasterMode;
+  open_drawer?: boolean;
+  driver?: string | null;
+}
+
+/** One entry point for every executor (browser, Android/desktop bridge, print agent). */
+export async function renderPrintJob(payload: PrintJobPayload, printer: PrinterLike, env: RasterEnv | null): Promise<Uint8Array> {
+  const doc = buildDoc(payload, printer.name);
+  const opt: RenderOptions = {
+    paperWidth: printer.paper_width,
+    dotsPerLine: printer.dots_per_line ?? undefined,
+    charsPerLine: printer.chars_per_line ?? undefined,
+    fontFamily: payload.font?.family,
+    fontWeight: payload.font?.weight,
+    fontSize: payload.font?.size,
+    lineHeight: payload.font?.lineHeight,
+    letterSpacing: payload.font?.letterSpacing,
+    mode: printer.raster_mode,
+    openDrawer: !!printer.open_drawer && (payload.documentType === 'RECEIPT' || !!payload.doc?.openDrawer),
+  };
+  if (printer.driver === 'ZPL' && env) return renderZpl(doc, env, opt);
+  return renderEscPos(doc, env, opt);
 }
