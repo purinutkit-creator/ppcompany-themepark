@@ -73,14 +73,14 @@ Hidden maintenance panel on a kiosk: tap the bottom-right corner of the welcome 
 
 ## Deploy to Render (Blueprint)
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/purinutkit-creator/restaurant-kiosk-ordering-system)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/purinutkit-creator/ppcompany-themepark)
 
 `render.yaml` creates, in Singapore:
 
 | Resource | Plan | Notes |
 |---|---|---|
-| `kiosk-db` PostgreSQL 16 | `basic-256mb` | no 30-day expiry (free DBs expire; one free DB per workspace) |
-| `krua-hub-kiosk` Docker web service | `starter` | always on — realtime sockets stay connected; 1 GB disk at `/data` for uploads |
+| `themepark-db` PostgreSQL 16 | `basic-256mb` | no 30-day expiry (free DBs expire; one free DB per workspace) |
+| `ppcompany-themepark` Docker web service | `starter` | always on — realtime sockets stay connected; 1 GB disk at `/data` for uploads |
 
 Steps: Render Dashboard → **New → Blueprint** → choose this repo → review plans → **Apply**.
 The pre-deploy command `node dist/seed.js` runs migrations and, on an empty database, creates the demo menu/devices.
